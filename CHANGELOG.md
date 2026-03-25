@@ -5,6 +5,20 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [1.3.0] 2026-03-25 — Tips panel
+
+### Added
+- **Tips button** (⌨ Tips) — floating semi-transparent button at bottom-right of terminal
+- **Mode-aware shortcut panel** — slides in from right, content changes based on current mode:
+  - Terminal mode: Ctrl shortcuts (Ctrl+A/E/U/K/W/C/L + arrows, history, Tab)
+  - Vim Normal mode: hjkl movement, insert-entry keys, dd/x, command-mode shortcuts
+  - Vim Insert mode: arrow navigation, Esc, Backspace, Tab
+- **Clickable shortcut items** — each tip can be clicked to execute the action directly
+- Tips panel re-renders on every keypress to stay in sync with mode changes
+- Full i18n support for all tip group names and descriptions (zh / en / ja)
+
+---
+
 ## [1.2.0] 2026-03-25 — Vim bug fixes
 
 ### Fixed

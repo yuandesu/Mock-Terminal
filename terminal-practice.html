@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#1a1a2e;
+  --terminal-bg:#0d0d0d;
+  --text-green:#00ff41;
+  --text-white:#e0e0e0;
+  --prompt-blue:#5eaeff;
+  --prompt-user:#ff79c6;
+  --key-bg:#3a3a4a;
+  --key-bg-hover:#4a4a5a;
+  --key-pressed:#00ff41;
+  --key-text:#ccc;
+  --key-border:#555;
+  --keyboard-bg:#2a2a3a;
+  --hint-bg:#1e3a5f;
+  --hint-border:#2e6aaf;
+  --success-bg:#1a3a1a;
+  --success-border:#2a8a2a;
+  --topbar-bg:#111;
+  --topbar-border:#333;
+  --topbar-title:#888;
+  --vi-status-bg:#222;
+}
+/* ── Light Mode ── */
+.light-mode{
+  --bg:#f0f2f5;
+  --terminal-bg:#ffffff;
+  --text-green:#007a1f;
+  --text-white:#1a1a1a;
+  --prompt-blue:#0055bb;
+  --prompt-user:#cc0066;
+  --key-bg:#e2e2e2;
+  --key-bg-hover:#d2d2d2;
+  --key-pressed:#007a1f;
+  --key-text:#333;
+  --key-border:#bbb;
+  --keyboard-bg:#d8d8d8;
+  --hint-bg:#e4f0fd;
+  --hint-border:#4a90d9;
+  --success-bg:#e6f5e6;
+  --success-border:#4a9a4a;
+  --topbar-bg:#f8f8f8;
+  --topbar-border:#ddd;
+  --topbar-title:#666;
+  --vi-status-bg:#ececec;
+}
+.light-mode .hint-toast.info{background:#fff4e0;border-color:#cc8800;color:#885500}
+.light-mode .hint-toast.explain{background:#f5eeff;border-color:#9055c8;color:#5a2d8a}
+.light-mode .hint-toast.success{color:#266026}
+.light-mode .error-line{color:#cc2200}
+.light-mode .dir-color{color:#0055bb}
+.light-mode .exec-color{color:#007a1f}
+.light-mode .vi-tilde{color:#0055bb}
+.light-mode #terminal::-webkit-scrollbar-thumb{background:#bbb}
+.light-mode .key{box-shadow:0 2px 0 #bbb}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'JetBrains Mono',monospace;color:var(--text-white)}
+#app{display:flex;flex-direction:column;height:100vh}
+
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:var(--topbar-bg);border-bottom:1px solid var(--topbar-border);flex-shrink:0}
+.top-bar .dots{display:flex;gap:6px}
+.top-bar .dot{width:12px;height:12px;border-radius:50%}
+.dot-r{background:#ff5f57}.dot-y{background:#ffbd2e}.dot-g{background:#28c840}
+.top-bar .title{font-size:13px;color:var(--topbar-title);letter-spacing:1px}
+.top-bar .mode-badge{font-size:11px;padding:2px 10px;border-radius:10px;background:var(--vi-status-bg);color:#aaa;border:1px solid var(--topbar-border)}
+
+/* ── Top-bar controls ── */
+.top-bar-controls{display:flex;align-items:center;gap:6px}
+.lang-btn{
+  font-size:11px;padding:2px 8px;border-radius:8px;cursor:pointer;user-select:none;
+  background:var(--vi-status-bg);color:#aaa;border:1px solid var(--topbar-border);
+  font-family:'JetBrains Mono',monospace;transition:all .15s;
+}
+.lang-btn:hover{color:var(--text-green);border-color:var(--text-green)}
+.lang-btn.active{color:var(--text-green);border-color:var(--text-green);font-weight:700}
+.theme-btn{
+  font-size:14px;padding:2px 6px;border-radius:8px;cursor:pointer;user-select:none;
+  background:var(--vi-status-bg);border:1px solid var(--topbar-border);
+  line-height:1.4;transition:all .15s;
+}
+.theme-btn:hover{border-color:var(--text-green)}
+
+.terminal-wrap{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--terminal-bg);position:relative;overflow:hidden}
+#terminal{flex:1;overflow-y:auto;padding:12px 16px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-all;scrollbar-width:thin;scrollbar-color:#333 transparent}
+#terminal::-webkit-scrollbar{width:6px}
+#terminal::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+.prompt-line{color:var(--text-green)}
+.prompt-user{color:var(--prompt-user)}
+.prompt-path{color:var(--prompt-blue)}
+.prompt-symbol{color:var(--text-green)}
+.output-line{color:var(--text-white);opacity:.9}
+.error-line{color:#ff6b6b}
+.dir-color{color:#5eaeff;font-weight:bold}
+.file-color{color:var(--text-white)}
+.exec-color{color:var(--text-green)}
+.vi-tilde{color:var(--prompt-blue)}
+.vi-status{color:var(--text-white);background:var(--vi-status-bg);padding:1px 0}
+
+.cursor-block{background:var(--text-green);color:#000;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+.hint-container{position:absolute;top:8px;right:8px;z-index:10;display:flex;flex-direction:column;gap:6px;max-width:400px;pointer-events:none}
+.hint-toast{padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.6;animation:slideIn .3s ease;pointer-events:auto;transition:opacity .3s}
+.hint-toast.hint{background:var(--hint-bg);border:1px solid var(--hint-border);color:#8ecfff}
+.hint-toast.success{background:var(--success-bg);border:1px solid var(--success-border);color:#6f6}
+.hint-toast.info{background:#3a2a1a;border:1px solid #8a6a2a;color:#ffd080}
+.hint-toast.explain{background:#2a1a3a;border:1px solid #6a4a8a;color:#d0b0ff}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.hint-toast .hint-title{font-weight:700;margin-bottom:2px;font-size:13px}
+
+.keyboard-section{flex-shrink:0;background:var(--keyboard-bg);border-top:2px solid var(--topbar-border);padding:8px 6px 10px}
+.kb-row{display:flex;justify-content:center;gap:4px;margin-bottom:4px}
+.key{
+  display:flex;align-items:center;justify-content:center;
+  min-width:42px;height:38px;padding:0 6px;
+  background:var(--key-bg);color:var(--key-text);
+  border:1px solid var(--key-border);border-radius:6px;
+  font-size:11px;font-family:'JetBrains Mono',monospace;
+  cursor:pointer;user-select:none;
+  transition:all .08s ease;
+  position:relative;
+  box-shadow:0 2px 0 #222;
+}
+.key:hover{background:var(--key-bg-hover)}
+.key.pressed{
+  background:var(--key-pressed)!important;color:#000!important;
+  transform:translateY(2px);box-shadow:none;
+  border-color:var(--key-pressed)!important;
+}
+.key.modifier-active{border-color:#ff79c6!important;color:#ff79c6!important;background:#3a2a3a!important}
+.key.wide-1{min-width:60px}.key.wide-2{min-width:80px}.key.wide-3{min-width:100px}
+.key.wide-4{min-width:130px}
+.key.space{flex:1;max-width:340px;min-width:200px}
+.key .sub{position:absolute;top:3px;left:6px;font-size:8px;color:#888}
+.key .main{font-size:12px}
+
+@media(max-width:900px){
+  .key{min-width:32px;height:32px;font-size:9px}
+  .key .sub{font-size:7px}
+  .key.space{min-width:140px}
+  #terminal{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top-bar">
+    <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+    <div class="title" id="topTitle">Terminal Practice — zsh</div>
+    <div class="top-bar-controls">
+      <div class="lang-btn active" data-lang="zh" onclick="switchLang('zh')">中</div>
+      <div class="lang-btn" data-lang="en" onclick="switchLang('en')">EN</div>
+      <div class="lang-btn" data-lang="ja" onclick="switchLang('ja')">日</div>
+      <div class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</div>
+      <div class="mode-badge" id="modeBadge">NORMAL</div>
+    </div>
+  </div>
+  <div class="terminal-wrap">
+    <div id="terminal"></div>
+    <div class="hint-container" id="hintContainer"></div>
+  </div>
+  <div class="keyboard-section" id="keyboard"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  TRANSLATIONS
+// ═══════════════════════════════════════
+const TRANSLATIONS = {
+  zh: {
+    title: 'Terminal Practice — zsh',
+    welcome1: 'Welcome to Terminal Practice! 🖥️',
+    welcome2: '輸入指令後會顯示該指令的說明。輸入 <span class="exec-color">help</span> 查看所有指令與快捷鍵。',
+    separator: '────────────────────────────────────────',
+    startHintTitle: '💡 開始練習',
+    startHintText: '試試 ls 查看目錄、cd 切換目錄，或 help 查看所有指令！',
+    langTitle: '🌐 語言切換',
+    langText: '已切換為繁體中文',
+    viEnterHint: '進入 Vim',
+    viEnterText: 'i=編輯 | Esc=一般 | :wq=存檔離開 | h/j/k/l=移動',
+    helpTitle: '═══ 可用指令與快捷鍵 ═══',
+    helpCmds: [
+      ['ls [-la]','列出目錄內容'],['cd <dir>','切換目錄'],['pwd','顯示當前路徑'],
+      ['cat <file>','查看檔案'],['head/tail [-n N] <file>','查看開頭/結尾'],
+      ['wc [-l] <file>','計算行數'],['mkdir <dir>','建立資料夾'],
+      ['touch <file>','建立空檔案'],['cp <src> <dest>','複製'],
+      ['mv <src> <dest>','移動/改名'],['rm [-r] <file>','刪除'],
+      ['grep <pat> <file>','搜尋文字'],['find <dir>','尋找檔案'],
+      ['vi <file>','Vim 編輯器'],['echo <text>','輸出文字'],
+      ['clear / Ctrl+L','清除螢幕'],['Ctrl+A / Ctrl+E','游標行首/行尾'],
+      ['Ctrl+U / Ctrl+K','刪到行首/行尾'],['Ctrl+W','刪前一個字'],
+      ['Ctrl+B / Ctrl+F','游標左移/右移'],['Ctrl+C','中斷指令'],['Tab','自動補全'],
+    ],
+    viEscHint: '📖 Esc',
+    viEscText: '回到一般模式。hjkl 移動、dd 刪行、:wq 存檔離開。',
+    viExpl: {
+      'i':'在游標前進入編輯模式','a':'在游標後進入編輯模式','A':'在行尾進入編輯模式',
+      'o':'下方新增行並編輯','O':'上方新增行並編輯','h':'← 左移','j':'↓ 下移',
+      'k':'↑ 上移','l':'→ 右移','0':'跳到行首','$':'跳到行尾',
+      'G':'跳到最後一行','x':'刪除游標下字元','d':'dd = 刪除整行',
+      ':':'進入命令模式 (:wq :q! 等)',
+    },
+    viCmdExpl: {
+      'w': ['📖 :w','儲存檔案但留在 Vim 中。用 :wq 存檔並離開。'],
+      'wq': ['📖 :wq','存檔並離開 Vim，回到終端機。'],
+      'x': ['📖 :x','存檔並離開 Vim，回到終端機。'],
+      'q': ['📖 :q','離開 Vim（檔案未修改時才能用）。'],
+      'q!': ['📖 :q!','強制離開 Vim，放棄所有未儲存的修改。'],
+    },
+    viLineJump: (n) => [`📖 :${n}`,`跳到第 ${n} 行。`],
+    cmdExplain: {
+      'ls':     { title:'ls', text:'列出當前目錄的檔案和資料夾。藍色=資料夾、白色=檔案、綠色=可執行檔。' },
+      'ls -l':  { title:'ls -l', text:'長格式列出，顯示權限、擁有者、大小、修改時間等詳細資訊。' },
+      'ls -a':  { title:'ls -a', text:'列出所有檔案，包含 . 開頭的隱藏檔（如 .bashrc）。' },
+      'ls -la': { title:'ls -la', text:'合併 -l 和 -a，完整顯示所有檔案的詳細資訊。' },
+      'ls -al': { title:'ls -al', text:'同 ls -la，完整顯示所有檔案的詳細資訊。' },
+      'cd':     { title:'cd', text:'切換到家目錄 (~)。cd = Change Directory。' },
+      'cd ..':  { title:'cd ..', text:'回到上一層目錄。「..」代表父目錄，「.」代表當前目錄。' },
+      'cd ~':   { title:'cd ~', text:'切換到家目錄。~ (tilde) 是 /home/user 的縮寫。' },
+      'pwd':    { title:'pwd', text:'Print Working Directory — 印出你目前所在的完整絕對路徑。' },
+      'cat':    { title:'cat', text:'Concatenate — 把檔案內容印到螢幕。適合快速查看短檔案。' },
+      'head':   { title:'head', text:'顯示檔案前幾行（預設 10 行）。用 -n N 指定行數，例如 head -3 file.txt' },
+      'tail':   { title:'tail', text:'顯示檔案最後幾行（預設 10 行）。常用於查看 log 最新內容。' },
+      'wc':     { title:'wc', text:'Word Count — 計算行數、字數、字元數。加 -l 只看行數。' },
+      'mkdir':  { title:'mkdir', text:'Make Directory — 建立新的空資料夾。' },
+      'touch':  { title:'touch', text:'建立空白檔案，或更新已存在檔案的修改時間戳記。' },
+      'cp':     { title:'cp', text:'Copy — 複製檔案。語法：cp 來源 目的地。加 -r 可複製資料夾。' },
+      'mv':     { title:'mv', text:'Move — 移動或重新命名。語法：mv 舊路徑 新路徑。' },
+      'rm':     { title:'rm', text:'Remove — 刪除檔案。加 -r 可刪資料夾。⚠️ 沒有回收桶！' },
+      'grep':   { title:'grep', text:'搜尋檔案中符合 pattern 的行。紅色標示匹配處。' },
+      'find':   { title:'find', text:'遞迴列出目錄下所有檔案與子目錄的完整路徑。' },
+      'echo':   { title:'echo', text:'輸出文字到螢幕。在 shell script 中常用來顯示訊息或變數。' },
+      'clear':  { title:'clear', text:'清除螢幕。快捷鍵 Ctrl+L 效果一樣。' },
+      'whoami': { title:'whoami', text:'顯示目前登入的使用者名稱。' },
+      'date':   { title:'date', text:'顯示系統的日期與時間。' },
+      'vi':     { title:'vi / vim', text:'Vim 編輯器。i=編輯模式 | Esc=一般模式 | :wq=存檔離開 | :q!=放棄' },
+      'vim':    { title:'vi / vim', text:'Vim 編輯器。i=編輯模式 | Esc=一般模式 | :wq=存檔離開 | :q!=放棄' },
+      'help':   { title:'help', text:'列出所有可用指令與快捷鍵。' },
+    },
+    ctrlExplain: {
+      'a': { title:'Ctrl+A', text:'游標移到行首 — 快速跳回指令的開頭來修改。' },
+      'e': { title:'Ctrl+E', text:'游標移到行尾 — 跳到指令最後面繼續輸入。' },
+      'b': { title:'Ctrl+B', text:'游標往左移一格（同 ← 方向鍵）。' },
+      'f': { title:'Ctrl+F', text:'游標往右移一格（同 → 方向鍵）。' },
+      'u': { title:'Ctrl+U', text:'刪除游標前面的所有文字（清除到行首）。' },
+      'k': { title:'Ctrl+K', text:'刪除游標後面的所有文字（清除到行尾）。' },
+      'w': { title:'Ctrl+W', text:'刪除游標前面的一個單字。反覆按可逐個刪除。' },
+      'c': { title:'Ctrl+C', text:'中斷/取消當前輸入，回到新的命令提示符。' },
+      'l': { title:'Ctrl+L', text:'清除螢幕，效果同 clear 指令。' },
+    },
+  },
+
+  en: {
+    title: 'Terminal Practice — zsh',
+    welcome1: 'Welcome to Terminal Practice! 🖥️',
+    welcome2: 'Run a command to see its explanation. Type <span class="exec-color">help</span> for all commands & shortcuts.',
+    separator: '────────────────────────────────────────',
+    startHintTitle: '💡 Get started',
+    startHintText: 'Try ls to list files, cd to change directory, or help for all commands!',
+    langTitle: '🌐 Language',
+    langText: 'Switched to English',
+    viEnterHint: 'Vim opened',
+    viEnterText: 'i=insert | Esc=normal | :wq=save & quit | h/j/k/l=move',
+    helpTitle: '═══ Commands & Shortcuts ═══',
+    helpCmds: [
+      ['ls [-la]','list directory contents'],['cd <dir>','change directory'],
+      ['pwd','print working directory'],['cat <file>','view file'],
+      ['head/tail [-n N] <file>','show first/last lines'],['wc [-l] <file>','count lines/words'],
+      ['mkdir <dir>','create directory'],['touch <file>','create empty file'],
+      ['cp <src> <dest>','copy'],['mv <src> <dest>','move / rename'],
+      ['rm [-r] <file>','delete'],['grep <pat> <file>','search text'],
+      ['find <dir>','find files'],['vi <file>','Vim editor'],
+      ['echo <text>','print text'],['clear / Ctrl+L','clear screen'],
+      ['Ctrl+A / Ctrl+E','cursor to start / end'],['Ctrl+U / Ctrl+K','delete to start / end'],
+      ['Ctrl+W','delete previous word'],['Ctrl+B / Ctrl+F','cursor left / right'],
+      ['Ctrl+C','interrupt'],['Tab','autocomplete'],
+    ],
+    viEscHint: '📖 Esc',
+    viEscText: 'Back to normal mode. hjkl to move, dd to delete line, :wq to save & quit.',
+    viExpl: {
+      'i':'Enter insert mode before cursor','a':'Enter insert mode after cursor',
+      'A':'Enter insert mode at end of line','o':'Open new line below and insert',
+      'O':'Open new line above and insert','h':'← move left','j':'↓ move down',
+      'k':'↑ move up','l':'→ move right','0':'Jump to beginning of line',
+      '$':'Jump to end of line','G':'Jump to last line','x':'Delete character under cursor',
+      'd':'dd = delete entire line',':':'Enter command mode (:wq :q! etc.)',
+    },
+    viCmdExpl: {
+      'w': ['📖 :w','File saved. Still in Vim. Use :wq to save and quit.'],
+      'wq': ['📖 :wq','Saved and exited Vim.'],
+      'x': ['📖 :x','Saved and exited Vim.'],
+      'q': ['📖 :q','Quit Vim (only works when no unsaved changes).'],
+      'q!': ['📖 :q!','Force quit Vim, discarding all unsaved changes.'],
+    },
+    viLineJump: (n) => [`📖 :${n}`,`Jumped to line ${n}.`],
+    cmdExplain: {
+      'ls':     { title:'ls', text:'List files and folders. Blue=directory, White=file, Green=executable.' },
+      'ls -l':  { title:'ls -l', text:'Long format: shows permissions, owner, size, and modification time.' },
+      'ls -a':  { title:'ls -a', text:'Show all files including hidden ones (starting with .) like .bashrc.' },
+      'ls -la': { title:'ls -la', text:'Combines -l and -a: full details including hidden files.' },
+      'ls -al': { title:'ls -al', text:'Same as ls -la: full details including hidden files.' },
+      'cd':     { title:'cd', text:'Change Directory — go to home directory (~).' },
+      'cd ..':  { title:'cd ..', text:'Go up one directory. ".." = parent dir, "." = current dir.' },
+      'cd ~':   { title:'cd ~', text:'Go to home directory. ~ (tilde) is shorthand for /home/user.' },
+      'pwd':    { title:'pwd', text:'Print Working Directory — prints the full absolute path of your location.' },
+      'cat':    { title:'cat', text:'Concatenate — print file contents to the screen.' },
+      'head':   { title:'head', text:'Show first N lines (default 10). Use -n N to specify, e.g. head -3 file.txt' },
+      'tail':   { title:'tail', text:'Show last N lines (default 10). Useful for viewing the latest log entries.' },
+      'wc':     { title:'wc', text:'Word Count — count lines, words, and characters. Add -l for lines only.' },
+      'mkdir':  { title:'mkdir', text:'Make Directory — create a new empty folder.' },
+      'touch':  { title:'touch', text:'Create an empty file, or update an existing file\'s modification time.' },
+      'cp':     { title:'cp', text:'Copy a file. Syntax: cp source destination. Add -r for directories.' },
+      'mv':     { title:'mv', text:'Move or rename. Syntax: mv old-path new-path.' },
+      'rm':     { title:'rm', text:'Remove — delete a file. Add -r for directories. ⚠️ No trash bin!' },
+      'grep':   { title:'grep', text:'Search for lines matching a pattern. Matches highlighted in red.' },
+      'find':   { title:'find', text:'Recursively list all files and subdirectories with full paths.' },
+      'echo':   { title:'echo', text:'Print text to screen. Used in scripts to display messages or variables.' },
+      'clear':  { title:'clear', text:'Clear the screen. Ctrl+L does the same.' },
+      'whoami': { title:'whoami', text:'Print the current logged-in username.' },
+      'date':   { title:'date', text:'Display the current system date and time.' },
+      'vi':     { title:'vi / vim', text:'Vim editor. i=insert | Esc=normal | :wq=save & quit | :q!=force quit' },
+      'vim':    { title:'vi / vim', text:'Vim editor. i=insert | Esc=normal | :wq=save & quit | :q!=force quit' },
+      'help':   { title:'help', text:'List all available commands and shortcuts.' },
+    },
+    ctrlExplain: {
+      'a': { title:'Ctrl+A', text:'Move cursor to beginning of line.' },
+      'e': { title:'Ctrl+E', text:'Move cursor to end of line.' },
+      'b': { title:'Ctrl+B', text:'Move cursor one character left (same as ← arrow key).' },
+      'f': { title:'Ctrl+F', text:'Move cursor one character right (same as → arrow key).' },
+      'u': { title:'Ctrl+U', text:'Delete everything before the cursor (clear to start of line).' },
+      'k': { title:'Ctrl+K', text:'Delete everything after the cursor (clear to end of line).' },
+      'w': { title:'Ctrl+W', text:'Delete the word before cursor. Press repeatedly for more words.' },
+      'c': { title:'Ctrl+C', text:'Interrupt / cancel current input and return to a new prompt.' },
+      'l': { title:'Ctrl+L', text:'Clear the screen, same as the clear command.' },
+    },
+  },
+
+  ja: {
+    title: 'Terminal Practice — zsh',
+    welcome1: 'Terminal Practice へようこそ！🖥️',
+    welcome2: 'コマンドを実行すると説明が表示されます。<span class="exec-color">help</span> で全コマンド一覧。',
+    separator: '────────────────────────────────────────',
+    startHintTitle: '💡 練習開始',
+    startHintText: 'ls でファイル一覧、cd でディレクトリ移動、help で全コマンド確認！',
+    langTitle: '🌐 言語切替',
+    langText: '日本語に切り替えました',
+    viEnterHint: 'Vim を開きました',
+    viEnterText: 'i=挿入 | Esc=ノーマル | :wq=保存して終了 | h/j/k/l=移動',
+    helpTitle: '═══ コマンド＆ショートカット ═══',
+    helpCmds: [
+      ['ls [-la]','ディレクトリ内容を表示'],['cd <dir>','ディレクトリ移動'],
+      ['pwd','現在のパスを表示'],['cat <file>','ファイル内容を表示'],
+      ['head/tail [-n N] <file>','先頭/末尾の行を表示'],['wc [-l] <file>','行数/単語数を数える'],
+      ['mkdir <dir>','ディレクトリ作成'],['touch <file>','空ファイル作成'],
+      ['cp <src> <dest>','コピー'],['mv <src> <dest>','移動/リネーム'],
+      ['rm [-r] <file>','削除'],['grep <pat> <file>','テキスト検索'],
+      ['find <dir>','ファイル検索'],['vi <file>','Vimエディタ'],
+      ['echo <text>','テキスト出力'],['clear / Ctrl+L','画面クリア'],
+      ['Ctrl+A / Ctrl+E','行頭/行末へ移動'],['Ctrl+U / Ctrl+K','行頭/行末まで削除'],
+      ['Ctrl+W','前の単語を削除'],['Ctrl+B / Ctrl+F','左/右へ移動'],
+      ['Ctrl+C','入力中断'],['Tab','自動補完'],
+    ],
+    viEscHint: '📖 Esc',
+    viEscText: 'ノーマルモードに戻ります。hjkl で移動、dd で行削除、:wq で保存終了。',
+    viExpl: {
+      'i':'カーソルの前に挿入モードで入る','a':'カーソルの後に挿入モードで入る',
+      'A':'行末に挿入モードで入る','o':'下に新しい行を作り挿入',
+      'O':'上に新しい行を作り挿入','h':'← 左移動','j':'↓ 下移動',
+      'k':'↑ 上移動','l':'→ 右移動','0':'行頭へジャンプ',
+      '$':'行末へジャンプ','G':'最終行へジャンプ','x':'カーソル下の文字を削除',
+      'd':'dd = 行全体を削除',':':'コマンドモードに入る (:wq :q! など)',
+    },
+    viCmdExpl: {
+      'w': ['📖 :w','ファイルを保存（Vim は終了しない）。:wq で保存して終了。'],
+      'wq': ['📖 :wq','保存してVimを終了。'],
+      'x': ['📖 :x','保存してVimを終了。'],
+      'q': ['📖 :q','Vimを終了（未保存の変更がない場合のみ）。'],
+      'q!': ['📖 :q!','強制終了。未保存の変更を破棄して終了。'],
+    },
+    viLineJump: (n) => [`📖 :${n}`,`${n} 行目へジャンプしました。`],
+    cmdExplain: {
+      'ls':     { title:'ls', text:'現在のディレクトリを一覧表示。青=ディレクトリ、白=ファイル、緑=実行ファイル。' },
+      'ls -l':  { title:'ls -l', text:'詳細表示：パーミッション・オーナー・サイズ・更新日時を表示。' },
+      'ls -a':  { title:'ls -a', text:'隠しファイル（. 始まり、例: .bashrc）も含めて全て表示。' },
+      'ls -la': { title:'ls -la', text:'-l と -a を組み合わせた詳細表示（隠しファイル含む）。' },
+      'ls -al': { title:'ls -al', text:'ls -la と同じ。隠しファイル含む詳細表示。' },
+      'cd':     { title:'cd', text:'ホームディレクトリ (~) に移動。cd = Change Directory。' },
+      'cd ..':  { title:'cd ..', text:'一つ上のディレクトリへ戻る。「..」=親ディレクトリ、「.」=現在。' },
+      'cd ~':   { title:'cd ~', text:'ホームディレクトリへ移動。~ は /home/user の省略形。' },
+      'pwd':    { title:'pwd', text:'Print Working Directory — 現在いる場所の絶対パスを表示。' },
+      'cat':    { title:'cat', text:'ファイルの内容を画面に表示。短いファイルの確認に便利。' },
+      'head':   { title:'head', text:'ファイルの先頭 N 行を表示（デフォルト10行）。例: head -3 file.txt' },
+      'tail':   { title:'tail', text:'ファイルの末尾 N 行を表示（デフォルト10行）。ログ確認に便利。' },
+      'wc':     { title:'wc', text:'Word Count — 行数・単語数・文字数を数える。-l で行数のみ。' },
+      'mkdir':  { title:'mkdir', text:'Make Directory — 新しい空ディレクトリを作成。' },
+      'touch':  { title:'touch', text:'空ファイルを作成、または既存ファイルの更新日時を更新。' },
+      'cp':     { title:'cp', text:'ファイルをコピー。構文: cp コピー元 コピー先。-r でディレクトリも可。' },
+      'mv':     { title:'mv', text:'移動またはリネーム。構文: mv 旧パス 新パス。' },
+      'rm':     { title:'rm', text:'ファイルを削除。-r でディレクトリ削除。⚠️ ゴミ箱なし！' },
+      'grep':   { title:'grep', text:'パターンに一致する行を検索。一致部分を赤でハイライト。' },
+      'find':   { title:'find', text:'ディレクトリ以下の全ファイルを再帰的に一覧表示。' },
+      'echo':   { title:'echo', text:'テキストを画面に出力。シェルスクリプトでメッセージ表示に使う。' },
+      'clear':  { title:'clear', text:'画面をクリア。Ctrl+L でも同じ効果。' },
+      'whoami': { title:'whoami', text:'現在ログインしているユーザー名を表示。' },
+      'date':   { title:'date', text:'システムの現在の日時を表示。' },
+      'vi':     { title:'vi / vim', text:'Vimエディタ。i=挿入 | Esc=ノーマル | :wq=保存終了 | :q!=強制終了' },
+      'vim':    { title:'vi / vim', text:'Vimエディタ。i=挿入 | Esc=ノーマル | :wq=保存終了 | :q!=強制終了' },
+      'help':   { title:'help', text:'利用可能な全コマンドとショートカットを表示。' },
+    },
+    ctrlExplain: {
+      'a': { title:'Ctrl+A', text:'行頭へカーソルを移動。' },
+      'e': { title:'Ctrl+E', text:'行末へカーソルを移動。' },
+      'b': { title:'Ctrl+B', text:'カーソルを1文字左へ（← キーと同じ）。' },
+      'f': { title:'Ctrl+F', text:'カーソルを1文字右へ（→ キーと同じ）。' },
+      'u': { title:'Ctrl+U', text:'カーソルより前を全て削除（行頭まで削除）。' },
+      'k': { title:'Ctrl+K', text:'カーソルより後を全て削除（行末まで削除）。' },
+      'w': { title:'Ctrl+W', text:'カーソル前の単語を削除。繰り返しで複数削除可。' },
+      'c': { title:'Ctrl+C', text:'入力を中断してプロンプトに戻る。' },
+      'l': { title:'Ctrl+L', text:'画面をクリア。clear コマンドと同じ効果。' },
+    },
+  },
+};
+
+// ═══════════════════════════════════════
+//  FILESYSTEM
+// ═══════════════════════════════════════
+const FS = {
+  '/': { type:'dir', children:['home'] },
+  '/home': { type:'dir', children:['user'] },
+  '/home/user': { type:'dir', children:['Documents','Downloads','projects','.bashrc','.zshrc'] },
+  '/home/user/Documents': { type:'dir', children:['notes.txt','report.md','todo.txt'] },
+  '/home/user/Documents/notes.txt': { type:'file', content:'這是一個筆記檔案。\n記得完成作業！\n明天開會時間：14:00' },
+  '/home/user/Documents/report.md': { type:'file', content:'# 月報告\n\n## 進度\n- 完成前端設計\n- API 串接中\n\n## 待辦\n- 測試部署' },
+  '/home/user/Documents/todo.txt': { type:'file', content:'1. 學習 Linux 指令\n2. 練習 vim\n3. 完成專案部署' },
+  '/home/user/Downloads': { type:'dir', children:['image.png','data.csv'] },
+  '/home/user/Downloads/image.png': { type:'file', content:'[binary PNG data]' },
+  '/home/user/Downloads/data.csv': { type:'file', content:'name,age,city\nAlice,28,Taipei\nBob,32,Tokyo\nCarol,25,Osaka' },
+  '/home/user/projects': { type:'dir', children:['webapp','script.sh'] },
+  '/home/user/projects/webapp': { type:'dir', children:['index.html','style.css','app.js','README.md'] },
+  '/home/user/projects/webapp/index.html': { type:'file', content:'<!DOCTYPE html>\n<html>\n<head><title>My App</title></head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>' },
+  '/home/user/projects/webapp/style.css': { type:'file', content:'body {\n  margin: 0;\n  font-family: sans-serif;\n  background: #f0f0f0;\n}\nh1 { color: #333; }' },
+  '/home/user/projects/webapp/app.js': { type:'file', content:'console.log("App started");\n\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\n\ngreet("World");' },
+  '/home/user/projects/webapp/README.md': { type:'file', content:'# WebApp\n\nA simple web application.\n\n## Setup\nnpm install\nnpm start' },
+  '/home/user/projects/script.sh': { type:'file', content:'#!/bin/bash\necho "Running backup..."\ntar -czf backup.tar.gz ~/Documents\necho "Backup complete!"', executable:true },
+  '/home/user/.bashrc': { type:'file', content:'# .bashrc\nexport PATH=$PATH:/usr/local/bin\nalias ll="ls -la"' },
+  '/home/user/.zshrc': { type:'file', content:'# .zshrc\nexport ZSH=$HOME/.oh-my-zsh\nZSH_THEME="robbyrussell"' },
+};
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let cwd = '/home/user';
+let inputBuf = '';
+let cursorPos = 0;
+let cmdHistory = [];
+let histIdx = -1;
+let mode = 'normal';
+let viState = null;
+let ctrlHeld = false;
+let shiftHeld = false;
+let currentLang = 'zh';
+let isLightMode = false;
+
+function T() { return TRANSLATIONS[currentLang]; }
+let cmdExplain  = T().cmdExplain;
+let ctrlExplain = T().ctrlExplain;
+
+// ═══════════════════════════════════════
+//  THEME & LANGUAGE
+// ═══════════════════════════════════════
+function toggleTheme() {
+  isLightMode = !isLightMode;
+  document.body.classList.toggle('light-mode', isLightMode);
+  document.getElementById('themeBtn').textContent = isLightMode ? '🌙' : '☀️';
+}
+
+function switchLang(lang) {
+  if (lang === currentLang) return;
+  currentLang = lang;
+  cmdExplain  = T().cmdExplain;
+  ctrlExplain = T().ctrlExplain;
+  // Update active button
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  // Update title
+  document.getElementById('topTitle').textContent = T().title;
+  // Clear terminal and re-print welcome
+  termLines = [];
+  addHtmlLine(`<span class="output-line" style="color:#888">${T().welcome1}</span>`);
+  addHtmlLine(`<span class="output-line" style="color:#888">${T().welcome2}</span>`);
+  addHtmlLine(`<span class="output-line" style="color:#888">${T().separator}</span>`);
+  refresh();
+  showHint('hint', T().langTitle, T().langText);
+}
+
+// ═══════════════════════════════════════
+//  COMMAND EXPLANATIONS
+// ═══════════════════════════════════════
+function getExplanation(cmd) {
+  const t = cmd.trim(), parts = t.split(/\s+/), base = parts[0];
+  const flags = parts.filter(p => p.startsWith('-')).sort().join(' ');
+  const withFlags = base + (flags ? ' ' + flags : '');
+  return cmdExplain[t] || cmdExplain[withFlags] || cmdExplain[base] || null;
+}
+
+// ═══════════════════════════════════════
+//  TERMINAL RENDERING
+// ═══════════════════════════════════════
+const termEl = document.getElementById('terminal');
+const hintEl = document.getElementById('hintContainer');
+let termLines = [];
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function getPrompt() {
+  let p = cwd.replace('/home/user','~') || '/';
+  return `<span class="prompt-user">user@macbook</span>:<span class="prompt-path">${p}</span><span class="prompt-symbol">$ </span>`;
+}
+
+function renderTerminal() {
+  if (mode !== 'normal') return;
+  const before = escHtml(inputBuf.substring(0, cursorPos));
+  const ch = cursorPos < inputBuf.length ? escHtml(inputBuf[cursorPos]) : ' ';
+  const after = escHtml(inputBuf.substring(cursorPos + 1));
+  const inputHtml = `<span class="output-line">${before}<span class="cursor-block">${ch}</span>${after}</span>`;
+  termEl.innerHTML = termLines.join('') + getPrompt() + inputHtml;
+  termEl.scrollTop = termEl.scrollHeight;
+}
+
+function renderVi() {
+  const v = viState;
+  const rows = Math.floor((termEl.clientHeight - 30) / 24) || 20;
+  let html = '';
+  for (let i = 0; i < rows - 1; i++) {
+    if (i < v.lines.length) {
+      let line = escHtml(v.lines[i]);
+      if (v.mode === 'normal' && i === v.cursorRow) {
+        const ch = v.lines[i][v.cursorCol] || ' ';
+        line = escHtml(v.lines[i].substring(0, v.cursorCol)) +
+          `<span style="background:var(--text-green);color:#000">${escHtml(ch)}</span>` +
+          escHtml(v.lines[i].substring(v.cursorCol + 1));
+      } else if (v.mode === 'insert' && i === v.cursorRow) {
+        line = escHtml(v.lines[i].substring(0, v.cursorCol)) +
+          `<span class="cursor-block"> </span>` +
+          escHtml(v.lines[i].substring(v.cursorCol));
+      }
+      html += `<div class="output-line">${line || ' '}</div>`;
+    } else {
+      html += `<div class="vi-tilde">~</div>`;
+    }
+  }
+  let status = '';
+  if (v.mode === 'insert') status = '-- INSERT --';
+  else if (v.mode === 'command') status = ':' + escHtml(v.commandBuf);
+  else status = escHtml(v.message || '');
+  html += `<div class="vi-status">${status}<span style="float:right">${v.cursorRow+1},${v.cursorCol+1}</span></div>`;
+  termEl.innerHTML = html;
+}
+
+function refresh() {
+  if (mode === 'normal') renderTerminal();
+  else if (mode.startsWith('vi')) renderVi();
+}
+
+function addPromptLine(cmd) { termLines.push(`<div class="prompt-line">${getPrompt()}<span class="output-line">${escHtml(cmd)}</span></div>`); }
+function addOutLine(text, cls='output-line') { termLines.push(`<div class="${cls}">${escHtml(text)}</div>`); }
+function addHtmlLine(html) { termLines.push(`<div>${html}</div>`); }
+
+// ═══════════════════════════════════════
+//  PATH RESOLUTION
+// ═══════════════════════════════════════
+function resolvePath(p) {
+  if (!p) return cwd;
+  if (p === '~') return '/home/user';
+  if (p.startsWith('~/')) p = '/home/user/' + p.slice(2);
+  else if (!p.startsWith('/')) p = cwd + '/' + p;
+  const parts = [];
+  for (const seg of p.split('/')) {
+    if (seg === '..') parts.pop();
+    else if (seg && seg !== '.') parts.push(seg);
+  }
+  return '/' + parts.join('/');
+}
+
+// ═══════════════════════════════════════
+//  TAB COMPLETION
+// ═══════════════════════════════════════
+function doTabComplete() {
+  const parts = inputBuf.split(/\s+/);
+  const lastPart = parts[parts.length - 1] || '';
+  if (!lastPart) return;
+
+  const slashIdx = lastPart.lastIndexOf('/');
+  let dirPrefix, partial;
+  if (slashIdx >= 0) {
+    dirPrefix = lastPart.substring(0, slashIdx + 1);
+    partial = lastPart.substring(slashIdx + 1);
+  } else {
+    dirPrefix = '';
+    partial = lastPart;
+  }
+
+  const searchDirInput = dirPrefix ? dirPrefix.replace(/\/$/,'') : '.';
+  const searchDir = resolvePath(searchDirInput);
+  const node = FS[searchDir];
+  if (!node || node.type !== 'dir') return;
+
+  const matches = node.children.filter(c => c.startsWith(partial));
+
+  if (matches.length === 1) {
+    const match = matches[0];
+    const fullPath = searchDir === '/' ? '/' + match : searchDir + '/' + match;
+    const isDir = FS[fullPath] && FS[fullPath].type === 'dir';
+    parts[parts.length - 1] = dirPrefix + match + (isDir ? '/' : '');
+    inputBuf = parts.join(' ');
+    cursorPos = inputBuf.length;
+  } else if (matches.length > 1) {
+    addPromptLine(inputBuf);
+    addHtmlLine(matches.map(m => {
+      const fullPath = searchDir === '/' ? '/' + m : searchDir + '/' + m;
+      const cls = FS[fullPath] && FS[fullPath].type === 'dir' ? 'dir-color' : 'file-color';
+      return `<span class="${cls}">${escHtml(m)}</span>`;
+    }).join('  '));
+    let common = matches[0];
+    for (let i = 1; i < matches.length; i++) {
+      while (!matches[i].startsWith(common)) common = common.slice(0, -1);
+    }
+    if (common.length > partial.length) {
+      parts[parts.length - 1] = dirPrefix + common;
+      inputBuf = parts.join(' ');
+      cursorPos = inputBuf.length;
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+//  COMMAND EXECUTION
+// ═══════════════════════════════════════
+function execCmd(raw) {
+  const cmd = raw.trim();
+  if (!cmd) { addPromptLine(''); refresh(); return; }
+  addPromptLine(cmd);
+  cmdHistory.push(cmd);
+  histIdx = cmdHistory.length;
+
+  const parts = cmd.split(/\s+/);
+  const c = parts[0], args = parts.slice(1);
+  let isError = false;
+
+  try {
+    switch(c) {
+      case 'ls': doLs(args); break;
+      case 'cd': doCd(args); break;
+      case 'pwd': addOutLine(cwd); break;
+      case 'cat': doCat(args); break;
+      case 'head': doHead(args); break;
+      case 'tail': doTail(args); break;
+      case 'wc': doWc(args); break;
+      case 'echo': addOutLine(args.join(' ').replace(/^["']|["']$/g,'')); break;
+      case 'mkdir': doMkdir(args); break;
+      case 'touch': doTouch(args); break;
+      case 'rm': doRm(args); break;
+      case 'cp': doCp(args); break;
+      case 'mv': doMv(args); break;
+      case 'grep': doGrep(args); break;
+      case 'find': doFind(args); break;
+      case 'clear': termLines = []; break;
+      case 'vi': case 'vim': doVi(args); break;
+      case 'whoami': addOutLine('user'); break;
+      case 'date': addOutLine(new Date().toLocaleString('zh-TW')); break;
+      case 'help': doHelp(); break;
+      default: addOutLine(`zsh: command not found: ${c}`, 'error-line'); isError = true;
+    }
+  } catch(e) { addOutLine(e.message, 'error-line'); isError = true; }
+
+  if (!isError) {
+    const explain = getExplanation(cmd);
+    if (explain) setTimeout(() => showHint('explain', `📖 ${explain.title}`, explain.text), 100);
+  }
+  refresh();
+}
+
+// ═══════════════════════════════════════
+//  COMMANDS
+// ═══════════════════════════════════════
+function doLs(args) {
+  let showAll=false,showLong=false,target=null;
+  for(const a of args){if(a.startsWith('-')){if(a.includes('a'))showAll=true;if(a.includes('l'))showLong=true;}else target=a;}
+  const p=resolvePath(target);const node=FS[p];
+  if(!node||node.type!=='dir'){addOutLine(`ls: ${target||p}: No such file or directory`,'error-line');return;}
+  let items=[...node.children];
+  if(showAll)items=['.','..',...items];
+  if(showLong){
+    items.forEach(name=>{const full=p==='/'?'/'+name:p+'/'+name;const n=FS[full];const isDir=n&&n.type==='dir';
+      const perm=isDir?'drwxr-xr-x':(n&&n.executable?'-rwxr-xr-x':'-rw-r--r--');
+      const size=n&&n.content?n.content.length:4096;
+      const cls=isDir?'dir-color':(n&&n.executable?'exec-color':'file-color');
+      addHtmlLine(`<span class="output-line">${perm}  1 user  staff  ${String(size).padStart(5)}  Mar 21 10:00  </span><span class="${cls}">${escHtml(name)}</span>`);
+    });
+  } else {
+    addHtmlLine(items.map(name=>{
+      if(name==='.'||name==='..')return `<span class="dir-color">${name}</span>`;
+      const full=p==='/'?'/'+name:p+'/'+name;const n=FS[full];
+      const cls=n&&n.type==='dir'?'dir-color':(n&&n.executable?'exec-color':'file-color');
+      return `<span class="${cls}">${escHtml(name)}</span>`;
+    }).join('  '));
+  }
+}
+function doCd(args){const target=args[0]||'~';const p=resolvePath(target);if(!FS[p]){addOutLine(`cd: no such file or directory: ${target}`,'error-line');return;}if(FS[p].type!=='dir'){addOutLine(`cd: not a directory: ${target}`,'error-line');return;}cwd=p;}
+function doCat(args){if(!args.length){addOutLine('usage: cat <file>','error-line');return;}const p=resolvePath(args[0]);const node=FS[p];if(!node){addOutLine(`cat: ${args[0]}: No such file or directory`,'error-line');return;}if(node.type==='dir'){addOutLine(`cat: ${args[0]}: Is a directory`,'error-line');return;}node.content.split('\n').forEach(l=>addOutLine(l));}
+function doHead(args){let n=10,file=null;for(let i=0;i<args.length;i++){if(args[i]==='-n'||/^-\d+$/.test(args[i])){n=parseInt(args[i]==='-n'?args[++i]:args[i].slice(1));}else file=args[i];}if(!file){addOutLine('usage: head [-n N] <file>','error-line');return;}const p=resolvePath(file);const node=FS[p];if(!node||node.type==='dir'){addOutLine(`head: ${file}: No such file or directory`,'error-line');return;}node.content.split('\n').slice(0,n).forEach(l=>addOutLine(l));}
+function doTail(args){let n=10,file=null;for(let i=0;i<args.length;i++){if(args[i]==='-n'||/^-\d+$/.test(args[i])){n=parseInt(args[i]==='-n'?args[++i]:args[i].slice(1));}else file=args[i];}if(!file){addOutLine('usage: tail [-n N] <file>','error-line');return;}const p=resolvePath(file);const node=FS[p];if(!node||node.type==='dir'){addOutLine(`tail: ${file}: No such file or directory`,'error-line');return;}node.content.split('\n').slice(-n).forEach(l=>addOutLine(l));}
+function doWc(args){let countLines=false,file=null;for(const a of args){if(a==='-l')countLines=true;else file=a;}if(!file){addOutLine('usage: wc [-l] <file>','error-line');return;}const p=resolvePath(file);const node=FS[p];if(!node||node.type==='dir'){addOutLine(`wc: ${file}: No such file or directory`,'error-line');return;}const lines=node.content.split('\n');if(countLines)addOutLine(`       ${lines.length} ${file}`);else{const words=node.content.split(/\s+/).filter(Boolean).length;addOutLine(`       ${lines.length}       ${words}      ${node.content.length} ${file}`);}}
+function doMkdir(args){if(!args.length){addOutLine('usage: mkdir <dir>','error-line');return;}const name=args[0];const p=resolvePath(name);if(FS[p]){addOutLine(`mkdir: ${name}: File exists`,'error-line');return;}FS[p]={type:'dir',children:[]};const parent=p.substring(0,p.lastIndexOf('/'))||'/';if(FS[parent])FS[parent].children.push(name.split('/').pop());}
+function doTouch(args){if(!args.length){addOutLine('usage: touch <file>','error-line');return;}const name=args[0];const p=resolvePath(name);if(!FS[p]){FS[p]={type:'file',content:''};const parent=p.substring(0,p.lastIndexOf('/'))||'/';if(FS[parent])FS[parent].children.push(name.split('/').pop());}}
+function doRm(args){let recursive=false,files=[];for(const a of args){if(a==='-r'||a==='-rf'||a==='-fr')recursive=true;else files.push(a);}files.forEach(f=>{const p=resolvePath(f);const node=FS[p];if(!node){addOutLine(`rm: ${f}: No such file or directory`,'error-line');return;}if(node.type==='dir'&&!recursive){addOutLine(`rm: ${f}: is a directory`,'error-line');return;}delete FS[p];const parent=p.substring(0,p.lastIndexOf('/'))||'/';if(FS[parent])FS[parent].children=FS[parent].children.filter(c=>c!==f.split('/').pop());});}
+function doCp(args){if(args.length<2){addOutLine('usage: cp <src> <dest>','error-line');return;}const src=resolvePath(args[0]),dest=resolvePath(args[1]);if(!FS[src]){addOutLine(`cp: ${args[0]}: No such file or directory`,'error-line');return;}FS[dest]={...FS[src],content:FS[src].content};const parent=dest.substring(0,dest.lastIndexOf('/'))||'/';const dname=dest.split('/').pop();if(FS[parent]&&!FS[parent].children.includes(dname))FS[parent].children.push(dname);}
+function doMv(args){if(args.length<2){addOutLine('usage: mv <src> <dest>','error-line');return;}doCp(args);const src=resolvePath(args[0]);const sname=args[0].split('/').pop();const sparent=src.substring(0,src.lastIndexOf('/'))||'/';delete FS[src];if(FS[sparent])FS[sparent].children=FS[sparent].children.filter(c=>c!==sname);}
+function doGrep(args){if(args.length<2){addOutLine('usage: grep <pattern> <file>','error-line');return;}const pat=args[0],file=args[1];const p=resolvePath(file);const node=FS[p];if(!node){addOutLine(`grep: ${file}: No such file or directory`,'error-line');return;}const re=new RegExp(pat,'gi');node.content.split('\n').forEach(l=>{if(re.test(l)){addHtmlLine(`<span class="output-line">${escHtml(l).replace(new RegExp(pat,'gi'),m=>`<span style="color:#ff6b6b;font-weight:bold">${m}</span>`)}</span>`);}});}
+function doFind(args){const target=args[0]||'.';const base=resolvePath(target);function walk(path){addOutLine(path.replace(base,target==='.'?'.':target));const n=FS[path];if(n&&n.type==='dir')n.children.forEach(c=>walk(path+'/'+c));}if(FS[base])walk(base);else addOutLine(`find: ${target}: No such file or directory`,'error-line');}
+function doHelp(){
+  const tr = T();
+  addOutLine(tr.helpTitle);
+  tr.helpCmds.forEach(([c,d])=>addHtmlLine(`<span class="exec-color">${escHtml(c.padEnd(28))}</span><span class="output-line">${escHtml(d)}</span>`));
+}
+
+// ═══════════════════════════════════════
+//  VI MODE
+// ═══════════════════════════════════════
+function doVi(args){
+  if(!args.length){addOutLine('usage: vi <file>','error-line');return;}
+  const file=args[0];const p=resolvePath(file);
+  if(!FS[p]){FS[p]={type:'file',content:''};const par=p.substring(0,p.lastIndexOf('/'))||'/';const nm=file.split('/').pop();if(FS[par]&&!FS[par].children.includes(nm))FS[par].children.push(nm);}
+  if(FS[p].type==='dir'){addOutLine(`vi: ${file}: is a directory`,'error-line');return;}
+  viState={path:p,filename:file,lines:FS[p].content.split('\n'),cursorRow:0,cursorCol:0,mode:'normal',commandBuf:'',message:`"${file}" ${FS[p].content.split('\n').length}L, ${FS[p].content.length}C`,modified:false};
+  mode='vi-normal';
+  document.getElementById('modeBadge').textContent='VIM - NORMAL';
+  document.getElementById('modeBadge').style.color='#ff6b6b';
+  showHint('info', T().viEnterHint, T().viEnterText);
+  refresh();
+}
+
+function viHandleKey(key){
+  const v=viState;if(!v)return;
+  if(v.mode==='command'){
+    if(key==='Enter'){viExecCommand(v.commandBuf);v.commandBuf='';v.mode='normal';}
+    else if(key==='Escape'){v.commandBuf='';v.mode='normal';}
+    else if(key==='Backspace'){v.commandBuf=v.commandBuf.slice(0,-1);if(!v.commandBuf)v.mode='normal';}
+    else if(key.length===1)v.commandBuf+=key;
+  }else if(v.mode==='insert'){
+    if(key==='Escape'){
+      v.mode='normal';v.cursorCol=Math.max(0,v.cursorCol-1);
+      document.getElementById('modeBadge').textContent='VIM - NORMAL';
+      showHint('explain', T().viEscHint, T().viEscText);
+    }
+    else if(key==='Enter'){const l=v.lines[v.cursorRow];v.lines[v.cursorRow]=l.substring(0,v.cursorCol);v.lines.splice(v.cursorRow+1,0,l.substring(v.cursorCol));v.cursorRow++;v.cursorCol=0;v.modified=true;}
+    else if(key==='Backspace'){if(v.cursorCol>0){const l=v.lines[v.cursorRow];v.lines[v.cursorRow]=l.substring(0,v.cursorCol-1)+l.substring(v.cursorCol);v.cursorCol--;v.modified=true;}else if(v.cursorRow>0){v.cursorCol=v.lines[v.cursorRow-1].length;v.lines[v.cursorRow-1]+=v.lines[v.cursorRow];v.lines.splice(v.cursorRow,1);v.cursorRow--;v.modified=true;}}
+    else if(key==='Tab'){const l=v.lines[v.cursorRow];v.lines[v.cursorRow]=l.substring(0,v.cursorCol)+'  '+l.substring(v.cursorCol);v.cursorCol+=2;v.modified=true;}
+    else if(key.length===1){const l=v.lines[v.cursorRow];v.lines[v.cursorRow]=l.substring(0,v.cursorCol)+key+l.substring(v.cursorCol);v.cursorCol++;v.modified=true;}
+  }else{
+    const viExpl = T().viExpl;
+    switch(key){
+      case 'i':v.mode='insert';document.getElementById('modeBadge').textContent='VIM - INSERT';break;
+      case 'a':v.mode='insert';v.cursorCol=Math.min(v.cursorCol+1,v.lines[v.cursorRow].length);document.getElementById('modeBadge').textContent='VIM - INSERT';break;
+      case 'A':v.mode='insert';v.cursorCol=v.lines[v.cursorRow].length;document.getElementById('modeBadge').textContent='VIM - INSERT';break;
+      case 'o':v.lines.splice(v.cursorRow+1,0,'');v.cursorRow++;v.cursorCol=0;v.mode='insert';document.getElementById('modeBadge').textContent='VIM - INSERT';v.modified=true;break;
+      case 'O':v.lines.splice(v.cursorRow,0,'');v.cursorCol=0;v.mode='insert';document.getElementById('modeBadge').textContent='VIM - INSERT';v.modified=true;break;
+      case 'h':case 'ArrowLeft':v.cursorCol=Math.max(0,v.cursorCol-1);break;
+      case 'l':case 'ArrowRight':v.cursorCol=Math.min(Math.max(0,v.lines[v.cursorRow].length-1),v.cursorCol+1);break;
+      case 'j':case 'ArrowDown':if(v.cursorRow<v.lines.length-1){v.cursorRow++;v.cursorCol=Math.min(v.cursorCol,Math.max(0,v.lines[v.cursorRow].length-1));}break;
+      case 'k':case 'ArrowUp':if(v.cursorRow>0){v.cursorRow--;v.cursorCol=Math.min(v.cursorCol,Math.max(0,v.lines[v.cursorRow].length-1));}break;
+      case '0':v.cursorCol=0;break;
+      case '$':v.cursorCol=Math.max(0,v.lines[v.cursorRow].length-1);break;
+      case 'g':v.cursorRow=0;v.cursorCol=0;break;
+      case 'G':v.cursorRow=v.lines.length-1;v.cursorCol=0;break;
+      case 'x':if(v.lines[v.cursorRow].length>0){v.lines[v.cursorRow]=v.lines[v.cursorRow].substring(0,v.cursorCol)+v.lines[v.cursorRow].substring(v.cursorCol+1);v.cursorCol=Math.min(v.cursorCol,Math.max(0,v.lines[v.cursorRow].length-1));v.modified=true;}break;
+      case 'd':if(v.lines.length>1){v.lines.splice(v.cursorRow,1);v.cursorRow=Math.min(v.cursorRow,v.lines.length-1);}else v.lines[0]='';v.cursorCol=0;v.modified=true;v.message='1 line deleted';break;
+      case 'u':v.message='Already at oldest change';break;
+      case ':':v.mode='command';v.commandBuf='';break;
+      case 'Escape':v.message='';break;
+    }
+    if(viExpl[key])showHint('explain',`📖 Vim: ${key}`,viExpl[key]);
+  }
+  refresh();
+}
+
+function viExecCommand(cmd){
+  const v=viState;
+  const ce = T().viCmdExpl;
+  if(cmd==='w'||cmd==='wq'||cmd==='x'){
+    FS[v.path].content=v.lines.join('\n');
+    v.message=`"${v.filename}" ${v.lines.length}L written`;
+    v.modified=false;
+    if(cmd==='wq'||cmd==='x'){
+      if(ce[cmd]) showHint('explain', ce[cmd][0], ce[cmd][1]);
+      exitVi();
+    } else {
+      if(ce['w']) showHint('explain', ce['w'][0], ce['w'][1]);
+    }
+  }
+  else if(cmd==='q'){
+    if(v.modified) v.message='E37: No write since last change (add ! to override)';
+    else{ if(ce['q']) showHint('explain', ce['q'][0], ce['q'][1]); exitVi(); }
+  }
+  else if(cmd==='q!'){
+    if(ce['q!']) showHint('explain', ce['q!'][0], ce['q!'][1]);
+    exitVi();
+  }
+  else if(cmd.match(/^\d+$/)){
+    v.cursorRow=Math.min(parseInt(cmd)-1,v.lines.length-1);
+    v.cursorCol=0;
+    const jmp = T().viLineJump(cmd);
+    showHint('explain', jmp[0], jmp[1]);
+  }
+  else v.message=`E492: Not an editor command: ${cmd}`;
+}
+
+function exitVi(){viState=null;mode='normal';document.getElementById('modeBadge').textContent='NORMAL';document.getElementById('modeBadge').style.color='#aaa';refresh();}
+
+// ═══════════════════════════════════════
+//  HINTS
+// ═══════════════════════════════════════
+function showHint(type, title, text) {
+  const existing = hintEl.querySelectorAll(`.hint-toast.${type}`);
+  if (existing.length > 2) existing[0].remove();
+  const el = document.createElement('div');
+  el.className = `hint-toast ${type}`;
+  el.innerHTML = `<div class="hint-title">${title}</div><div>${text}</div>`;
+  hintEl.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 6000);
+}
+
+// ═══════════════════════════════════════
+//  KEYBOARD INPUT
+// ═══════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'F5' && e.key !== 'F12' && !(e.ctrlKey && e.key === 'r')) e.preventDefault();
+
+  const kid = findKeyId(e);
+  pressKeyVisual(kid);
+
+  if (e.key === 'Shift') { shiftHeld = true; return; }
+  if (e.key === 'Control') { ctrlHeld = true; updateModifierVisual(); return; }
+  if (e.key === 'Alt' || e.key === 'Meta') return;
+
+  if (mode.startsWith('vi')) { viHandleKey(e.key); return; }
+
+  if (e.ctrlKey || ctrlHeld) {
+    const k = e.key.toLowerCase();
+    switch(k) {
+      case 'a': cursorPos = 0; break;
+      case 'e': cursorPos = inputBuf.length; break;
+      case 'b': cursorPos = Math.max(0, cursorPos - 1); break;
+      case 'f': cursorPos = Math.min(inputBuf.length, cursorPos + 1); break;
+      case 'u': inputBuf = inputBuf.substring(cursorPos); cursorPos = 0; break;
+      case 'k': inputBuf = inputBuf.substring(0, cursorPos); break;
+      case 'w': {
+        let i = cursorPos - 1;
+        while (i >= 0 && inputBuf[i] === ' ') i--;
+        while (i >= 0 && inputBuf[i] !== ' ') i--;
+        inputBuf = inputBuf.substring(0, i + 1) + inputBuf.substring(cursorPos);
+        cursorPos = i + 1;
+        break;
+      }
+      case 'c': inputBuf = ''; cursorPos = 0; addPromptLine('^C'); break;
+      case 'l': termLines = []; break;
+    }
+    if (ctrlExplain[k]) showHint('explain', `📖 ${ctrlExplain[k].title}`, ctrlExplain[k].text);
+    refresh();
+    return;
+  }
+
+  if (e.key === 'Enter') { execCmd(inputBuf); inputBuf = ''; cursorPos = 0; }
+  else if (e.key === 'Backspace') { if (cursorPos > 0) { inputBuf = inputBuf.substring(0, cursorPos-1) + inputBuf.substring(cursorPos); cursorPos--; } }
+  else if (e.key === 'Delete') { if (cursorPos < inputBuf.length) inputBuf = inputBuf.substring(0, cursorPos) + inputBuf.substring(cursorPos+1); }
+  else if (e.key === 'ArrowLeft') { cursorPos = Math.max(0, cursorPos-1); }
+  else if (e.key === 'ArrowRight') { cursorPos = Math.min(inputBuf.length, cursorPos+1); }
+  else if (e.key === 'Home') { cursorPos = 0; }
+  else if (e.key === 'End') { cursorPos = inputBuf.length; }
+  else if (e.key === 'ArrowUp') { if (cmdHistory.length > 0) { histIdx = Math.max(0, histIdx-1); inputBuf = cmdHistory[histIdx] || ''; cursorPos = inputBuf.length; } }
+  else if (e.key === 'ArrowDown') { if (histIdx < cmdHistory.length-1) { histIdx++; inputBuf = cmdHistory[histIdx]; } else { histIdx = cmdHistory.length; inputBuf = ''; } cursorPos = inputBuf.length; }
+  else if (e.key === 'Tab') { doTabComplete(); }
+  else if (e.key.length === 1) { inputBuf = inputBuf.substring(0, cursorPos) + e.key + inputBuf.substring(cursorPos); cursorPos++; }
+
+  refresh();
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'Shift') shiftHeld = false;
+  if (e.key === 'Control') { ctrlHeld = false; updateModifierVisual(); }
+});
+
+// ═══════════════════════════════════════
+//  VIRTUAL KEYBOARD
+// ═══════════════════════════════════════
+const kbLayout = [
+  [{l:'`',s:'~'},{l:'1',s:'!'},{l:'2',s:'@'},{l:'3',s:'#'},{l:'4',s:'$'},{l:'5',s:'%'},{l:'6',s:'^'},{l:'7',s:'&'},{l:'8',s:'*'},{l:'9',s:'('},{l:'0',s:')'},{l:'-',s:'_'},{l:'=',s:'+'},{l:'Delete',w:'wide-2',k:'Backspace'}],
+  [{l:'Tab',w:'wide-2',k:'Tab'},{l:'Q'},{l:'W'},{l:'E'},{l:'R'},{l:'T'},{l:'Y'},{l:'U'},{l:'I'},{l:'O'},{l:'P'},{l:'[',s:'{'},{l:']',s:'}'},{l:'\\',s:'|'}],
+  [{l:'Caps',w:'wide-3',k:'CapsLock'},{l:'A'},{l:'S'},{l:'D'},{l:'F'},{l:'G'},{l:'H'},{l:'J'},{l:'K'},{l:'L'},{l:';',s:':'},{l:"'",s:'"'},{l:'Return',w:'wide-3',k:'Enter'}],
+  [{l:'Shift',w:'wide-4',k:'ShiftL'},{l:'Z'},{l:'X'},{l:'C'},{l:'V'},{l:'B'},{l:'N'},{l:'M'},{l:',',s:'<'},{l:'.',s:'>'},{l:'/',s:'?'},{l:'Shift',w:'wide-3',k:'ShiftR'}],
+  [{l:'Fn',w:'wide-1'},{l:'⌃',w:'wide-1',k:'CtrlL'},{l:'⌥',w:'wide-1',k:'AltL'},{l:'⌘',w:'wide-2',k:'MetaL'},{l:'',w:'space',k:'Space'},{l:'⌘',w:'wide-2',k:'MetaR'},{l:'⌥',w:'wide-1',k:'AltR'},{l:'←',k:'ArrowLeft'},{l:'↑↓',k:'ArrowUpDown'},{l:'→',k:'ArrowRight'}],
+];
+
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kbLayout.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kb-row';
+    row.forEach(key => {
+      const el = document.createElement('div');
+      el.className = 'key' + (key.w ? ' ' + key.w : '');
+      const kid = key.k || key.l;
+      el.dataset.key = kid;
+      if (key.s) el.innerHTML = `<span class="sub">${escHtml(key.s)}</span><span class="main">${escHtml(key.l)}</span>`;
+      else el.innerHTML = `<span class="main">${escHtml(key.l)}</span>`;
+      el.addEventListener('mousedown', (ev) => { ev.preventDefault(); simulateKey(kid); });
+      rowEl.appendChild(el);
+    });
+    kb.appendChild(rowEl);
+  });
+}
+
+function pressKeyVisual(keyId) {
+  document.querySelectorAll(`.key[data-key="${CSS.escape(keyId)}"]`).forEach(el => {
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 200);
+  });
+}
+
+function updateModifierVisual() {
+  document.querySelectorAll('.key[data-key="CtrlL"]').forEach(el => {
+    el.classList.toggle('modifier-active', ctrlHeld);
+  });
+}
+
+function findKeyId(e) {
+  if (e.code === 'ShiftLeft') return 'ShiftL';
+  if (e.code === 'ShiftRight') return 'ShiftR';
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight') return 'CtrlL';
+  if (e.code === 'AltLeft') return 'AltL';
+  if (e.code === 'AltRight') return 'AltR';
+  if (e.code === 'MetaLeft') return 'MetaL';
+  if (e.code === 'MetaRight') return 'MetaR';
+  if (e.key === 'Backspace') return 'Backspace';
+  if (e.key === 'Enter') return 'Enter';
+  if (e.key === 'Tab') return 'Tab';
+  if (e.key === ' ') return 'Space';
+  if (e.key === 'CapsLock') return 'CapsLock';
+  if (e.key === 'ArrowLeft') return 'ArrowLeft';
+  if (e.key === 'ArrowRight') return 'ArrowRight';
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') return 'ArrowUpDown';
+  const upper = e.key.toUpperCase();
+  if (upper.length === 1) return upper;
+  return e.key;
+}
+
+function simulateKey(kid) {
+  let key = kid;
+  if (kid === 'Backspace') key = 'Backspace';
+  else if (kid === 'Enter') key = 'Enter';
+  else if (kid === 'Space') key = ' ';
+  else if (kid === 'Tab') key = 'Tab';
+  else if (kid === 'ShiftL' || kid === 'ShiftR') { shiftHeld = !shiftHeld; return; }
+  else if (kid === 'CtrlL') { ctrlHeld = !ctrlHeld; updateModifierVisual(); return; }
+  else if (kid === 'AltL' || kid === 'AltR' || kid === 'MetaL' || kid === 'MetaR' || kid === 'Fn' || kid === 'CapsLock') return;
+  else if (kid === 'ArrowLeft') key = 'ArrowLeft';
+  else if (kid === 'ArrowRight') key = 'ArrowRight';
+  else if (kid === 'ArrowUpDown') key = 'ArrowUp';
+  else if (kid.length === 1) key = shiftHeld ? kid.toUpperCase() : kid.toLowerCase();
+
+  document.dispatchEvent(new KeyboardEvent('keydown', { key, code: kid, ctrlKey: ctrlHeld, shiftKey: shiftHeld, bubbles: true }));
+  if (ctrlHeld) { ctrlHeld = false; updateModifierVisual(); }
+}
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+buildKeyboard();
+addHtmlLine(`<span class="output-line" style="color:#888">${T().welcome1}</span>`);
+addHtmlLine(`<span class="output-line" style="color:#888">${T().welcome2}</span>`);
+addHtmlLine(`<span class="output-line" style="color:#888">${T().separator}</span>`);
+refresh();
+
+setTimeout(() => showHint('hint', T().startHintTitle, T().startHintText), 600);
+</script>
+</body>
+</html>

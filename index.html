@@ -27,6 +27,14 @@
     <div class="terminal-wrap">
       <div id="terminal"></div>
       <div class="hint-container" id="hintContainer"></div>
+      <button class="tips-btn" id="tipsBtn" onclick="toggleTips()">⌨ Tips</button>
+      <div class="tips-panel" id="tipsPanel">
+        <div class="tips-header">
+          <span class="tips-title" id="tipsPanelTitle"></span>
+          <button class="tips-close" onclick="toggleTips()">×</button>
+        </div>
+        <div class="tips-body" id="tipsBody"></div>
+      </div>
     </div>
     <div class="keyboard-section" id="keyboard"></div>
   </div>

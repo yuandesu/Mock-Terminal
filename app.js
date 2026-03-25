@@ -20,6 +20,172 @@ function T() { return TRANSLATIONS[currentLang]; }
 let cmdExplain  = T().cmdExplain;
 let ctrlExplain = T().ctrlExplain;
 
+// ── Tips Panel ────────────────────────
+let tipsOpen = false;
+
+function dispatchKey(opts) {
+  document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, ...opts }));
+}
+
+const TIPS_ACTIONS = {
+  ctrl_a: () => dispatchKey({ key: 'a', ctrlKey: true }),
+  ctrl_e: () => dispatchKey({ key: 'e', ctrlKey: true }),
+  ctrl_b: () => dispatchKey({ key: 'b', ctrlKey: true }),
+  ctrl_f: () => dispatchKey({ key: 'f', ctrlKey: true }),
+  ctrl_u: () => dispatchKey({ key: 'u', ctrlKey: true }),
+  ctrl_k: () => dispatchKey({ key: 'k', ctrlKey: true }),
+  ctrl_w: () => dispatchKey({ key: 'w', ctrlKey: true }),
+  ctrl_c: () => dispatchKey({ key: 'c', ctrlKey: true }),
+  ctrl_l: () => dispatchKey({ key: 'l', ctrlKey: true }),
+  arrow_left:  () => dispatchKey({ key: 'ArrowLeft' }),
+  arrow_right: () => dispatchKey({ key: 'ArrowRight' }),
+  arrow_up:    () => dispatchKey({ key: 'ArrowUp' }),
+  arrow_down:  () => dispatchKey({ key: 'ArrowDown' }),
+  backspace:   () => dispatchKey({ key: 'Backspace' }),
+  tab:         () => dispatchKey({ key: 'Tab' }),
+  vi_h: () => viHandleKey('h'),
+  vi_j: () => viHandleKey('j'),
+  vi_k: () => viHandleKey('k'),
+  vi_l: () => viHandleKey('l'),
+  vi_0: () => viHandleKey('0'),
+  vi_$: () => viHandleKey('$'),
+  vi_G: () => viHandleKey('G'),
+  vi_g: () => viHandleKey('g'),
+  vi_i: () => viHandleKey('i'),
+  vi_a: () => viHandleKey('a'),
+  vi_A: () => viHandleKey('A'),
+  vi_o: () => viHandleKey('o'),
+  vi_O: () => viHandleKey('O'),
+  vi_x: () => viHandleKey('x'),
+  vi_u: () => viHandleKey('u'),
+  vi_dd:     () => { viHandleKey('d'); viHandleKey('d'); },
+  vi_esc:    () => viHandleKey('Escape'),
+  vi_cmd_w:  () => { viHandleKey(':'); 'w' .split('').forEach(c => viHandleKey(c)); viHandleKey('Enter'); },
+  vi_cmd_wq: () => { viHandleKey(':'); 'wq'.split('').forEach(c => viHandleKey(c)); viHandleKey('Enter'); },
+  vi_cmd_q:  () => { viHandleKey(':'); 'q' .split('').forEach(c => viHandleKey(c)); viHandleKey('Enter'); },
+  vi_cmd_qb: () => { viHandleKey(':'); 'q!'.split('').forEach(c => viHandleKey(c)); viHandleKey('Enter'); },
+};
+
+function buildTipsGroups() {
+  const t = T(), ti = t.tips, ce = t.ctrlExplain, ve = t.viExpl;
+  const isViInsert  = viState && viState.mode === 'insert';
+  const isViNormal  = viState && viState.mode !== 'insert';
+
+  if (isViInsert) {
+    return {
+      title: ti.viInsertTitle,
+      groups: [
+        { name: ti.groups.move, items: [
+          { key: '←', desc: ti.extra.arrowLeft,    action: 'arrow_left' },
+          { key: '→', desc: ti.extra.arrowRight,   action: 'arrow_right' },
+          { key: '↑', desc: ti.extra.viCursorUp,   action: 'arrow_up' },
+          { key: '↓', desc: ti.extra.viCursorDown, action: 'arrow_down' },
+        ]},
+        { name: ti.groups.escape, items: [
+          { key: 'Esc', desc: ti.extra.viEsc, action: 'vi_esc' },
+        ]},
+        { name: ti.groups.delete, items: [
+          { key: '⌫', desc: ti.extra.backspace, action: 'backspace' },
+        ]},
+      ],
+    };
+  }
+
+  if (isViNormal) {
+    return {
+      title: ti.viNormalTitle,
+      groups: [
+        { name: ti.groups.move, items: [
+          { key: 'h', desc: ve.h, action: 'vi_h' },
+          { key: 'j', desc: ve.j, action: 'vi_j' },
+          { key: 'k', desc: ve.k, action: 'vi_k' },
+          { key: 'l', desc: ve.l, action: 'vi_l' },
+          { key: '0', desc: ve['0'], action: 'vi_0' },
+          { key: '$', desc: ve['$'], action: 'vi_$' },
+          { key: 'g', desc: ve.g,   action: 'vi_g' },
+          { key: 'G', desc: ve.G,   action: 'vi_G' },
+        ]},
+        { name: ti.groups.enterInsert, items: [
+          { key: 'i', desc: ve.i, action: 'vi_i' },
+          { key: 'a', desc: ve.a, action: 'vi_a' },
+          { key: 'A', desc: ve.A, action: 'vi_A' },
+          { key: 'o', desc: ve.o, action: 'vi_o' },
+          { key: 'O', desc: ve.O, action: 'vi_O' },
+        ]},
+        { name: ti.groups.operations, items: [
+          { key: 'x',  desc: ve.x, action: 'vi_x' },
+          { key: 'dd', desc: ve.d, action: 'vi_dd' },
+          { key: 'u',  desc: ti.extra.viUndo, action: 'vi_u' },
+        ]},
+        { name: ti.groups.commands, items: [
+          { key: ':w',  desc: ti.extra.viCmdW,  action: 'vi_cmd_w' },
+          { key: ':wq', desc: ti.extra.viCmdWq, action: 'vi_cmd_wq' },
+          { key: ':q',  desc: ti.extra.viCmdQ,  action: 'vi_cmd_q' },
+          { key: ':q!', desc: ti.extra.viCmdQb, action: 'vi_cmd_qb' },
+        ]},
+      ],
+    };
+  }
+
+  // Terminal normal mode
+  return {
+    title: ti.terminalTitle,
+    groups: [
+      { name: ti.groups.cursor, items: [
+        { key: 'Ctrl+A', desc: ce.a.text, action: 'ctrl_a' },
+        { key: 'Ctrl+E', desc: ce.e.text, action: 'ctrl_e' },
+        { key: 'Ctrl+B', desc: ce.b.text, action: 'ctrl_b' },
+        { key: 'Ctrl+F', desc: ce.f.text, action: 'ctrl_f' },
+        { key: '←',     desc: ti.extra.arrowLeft,  action: 'arrow_left' },
+        { key: '→',     desc: ti.extra.arrowRight, action: 'arrow_right' },
+      ]},
+      { name: ti.groups.delete, items: [
+        { key: 'Ctrl+U', desc: ce.u.text, action: 'ctrl_u' },
+        { key: 'Ctrl+K', desc: ce.k.text, action: 'ctrl_k' },
+        { key: 'Ctrl+W', desc: ce.w.text, action: 'ctrl_w' },
+        { key: '⌫',     desc: ti.extra.backspace, action: 'backspace' },
+      ]},
+      { name: ti.groups.history, items: [
+        { key: '↑', desc: ti.extra.histPrev, action: 'arrow_up' },
+        { key: '↓', desc: ti.extra.histNext, action: 'arrow_down' },
+      ]},
+      { name: ti.groups.other, items: [
+        { key: 'Tab',    desc: ti.extra.tab, action: 'tab' },
+        { key: 'Ctrl+C', desc: ce.c.text,   action: 'ctrl_c' },
+        { key: 'Ctrl+L', desc: ce.l.text,   action: 'ctrl_l' },
+      ]},
+    ],
+  };
+}
+
+function renderTipsPanel() {
+  const data   = buildTipsGroups();
+  document.getElementById('tipsPanelTitle').textContent = data.title;
+  document.getElementById('tipsBody').innerHTML = data.groups.map(g => `
+    <div class="tips-group">
+      <div class="tips-group-name">${escHtml(g.name)}</div>
+      ${g.items.map(item => `
+        <div class="tips-item" onclick="executeTip('${item.action}')">
+          <span class="tips-key">${escHtml(item.key)}</span>
+          <span class="tips-desc" title="${escHtml(item.desc)}">${escHtml(item.desc)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function toggleTips() {
+  tipsOpen = !tipsOpen;
+  document.getElementById('tipsPanel').classList.toggle('open', tipsOpen);
+  document.getElementById('tipsBtn').classList.toggle('active', tipsOpen);
+  if (tipsOpen) renderTipsPanel();
+}
+
+function executeTip(actionId) {
+  const fn = TIPS_ACTIONS[actionId];
+  if (fn) fn();
+}
+
 // ── Theme & Language ───────────────────
 function toggleTheme() {
   isLightMode = !isLightMode;
@@ -103,8 +269,9 @@ function renderVi() {
 }
 
 function refresh() {
-  if (mode === 'normal')        renderTerminal();
+  if (mode === 'normal')          renderTerminal();
   else if (mode.startsWith('vi')) renderVi();
+  if (tipsOpen) renderTipsPanel();
 }
 
 function addPromptLine(cmd) { termLines.push(`<div class="prompt-line">${getPrompt()}<span class="output-line">${escHtml(cmd)}</span></div>`); }

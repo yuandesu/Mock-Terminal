@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Practice</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="top-bar">
+      <div class="dots">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+      </div>
+      <div class="title" id="topTitle">Terminal Practice — zsh</div>
+      <div class="top-bar-controls">
+        <div class="lang-btn active" data-lang="zh" onclick="switchLang('zh')">中</div>
+        <div class="lang-btn"        data-lang="en" onclick="switchLang('en')">EN</div>
+        <div class="lang-btn"        data-lang="ja" onclick="switchLang('ja')">日</div>
+        <div class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</div>
+        <div class="mode-badge" id="modeBadge">NORMAL</div>
+      </div>
+    </div>
+    <div class="terminal-wrap">
+      <div id="terminal"></div>
+      <div class="hint-container" id="hintContainer"></div>
+    </div>
+    <div class="keyboard-section" id="keyboard"></div>
+  </div>
+
+  <!-- Load order matters: data → translations → app logic -->
+  <script src="filesystem.js"></script>
+  <script src="lang/zh.js"></script>
+  <script src="lang/en.js"></script>
+  <script src="lang/ja.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

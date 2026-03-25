@@ -166,24 +166,19 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
 .tips-btn.active { opacity: 1; color: var(--text-green); border-color: var(--text-green); background: rgba(0, 255, 65, 0.12); }
 
 .tips-panel {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
+  flex-shrink: 0;
   background: rgba(12, 12, 24, 0.97);
   border-top: 1px solid rgba(100, 100, 150, 0.4);
-  z-index: 199;
   display: flex;
   flex-direction: column;
+  max-height: 0;
+  overflow: hidden;
   opacity: 0;
-  visibility: hidden;
-  transform: translateY(20px);
-  transition: opacity .2s ease, transform .2s ease, visibility 0s .2s;
-  backdrop-filter: blur(12px);
+  transition: max-height .25s ease, opacity .2s ease;
 }
 .tips-panel.open {
+  max-height: 220px;
   opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition: opacity .2s ease, transform .2s ease, visibility 0s;
 }
 
 .tips-header {
@@ -246,7 +241,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
 /* Light mode overrides for tips */
 .light-mode .tips-btn  { background: rgba(240,240,250,0.88); border-color: rgba(100,100,180,0.4); color: #555; }
 .light-mode .tips-btn:hover, .light-mode .tips-btn.active { color: var(--text-green); border-color: var(--text-green); background: rgba(0,120,30,0.08); }
-.light-mode .tips-panel { background: rgba(248,248,252,0.97); border-top-color: rgba(150,150,200,0.4); }
+.light-mode .tips-panel { background: rgba(248,248,252,0.97); border-top-color: rgba(150,150,200,0.4); overflow: hidden; }
 .light-mode .tips-group-name { color: #999; border-bottom-color: #eee; }
 .light-mode .tips-group { border-right-color: rgba(150,150,200,0.2); }
 .light-mode .tips-key  { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.15); color: #333; }

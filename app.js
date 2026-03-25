@@ -13,6 +13,11 @@ let mode       = 'normal';
 let viState    = null;
 let ctrlHeld   = false;
 let shiftHeld  = false;
+let killBuf    = '';
+let rsMode     = false;
+let rsBuf      = '';
+let rsMatchIdx = -1;
+let rsSaved    = '';
 let currentLang   = 'zh';
 let isLightMode   = false;
 
@@ -35,6 +40,8 @@ const TIPS_ACTIONS = {
   ctrl_u: () => dispatchKey({ key: 'u', ctrlKey: true }),
   ctrl_k: () => dispatchKey({ key: 'k', ctrlKey: true }),
   ctrl_w: () => dispatchKey({ key: 'w', ctrlKey: true }),
+  ctrl_y: () => dispatchKey({ key: 'y', ctrlKey: true }),
+  ctrl_r: () => dispatchKey({ key: 'r', ctrlKey: true }),
   ctrl_c: () => dispatchKey({ key: 'c', ctrlKey: true }),
   ctrl_l: () => dispatchKey({ key: 'l', ctrlKey: true }),
   arrow_left:  () => dispatchKey({ key: 'ArrowLeft' }),
@@ -143,11 +150,13 @@ function buildTipsGroups() {
         { key: 'Ctrl+U', desc: ce.u.text, action: 'ctrl_u' },
         { key: 'Ctrl+K', desc: ce.k.text, action: 'ctrl_k' },
         { key: 'Ctrl+W', desc: ce.w.text, action: 'ctrl_w' },
+        { key: 'Ctrl+Y', desc: ce.y.text, action: 'ctrl_y' },
         { key: '⌫',     desc: ti.extra.backspace, action: 'backspace' },
       ]},
       { name: ti.groups.history, items: [
-        { key: '↑', desc: ti.extra.histPrev, action: 'arrow_up' },
-        { key: '↓', desc: ti.extra.histNext, action: 'arrow_down' },
+        { key: '↑',     desc: ti.extra.histPrev, action: 'arrow_up' },
+        { key: '↓',     desc: ti.extra.histNext, action: 'arrow_down' },
+        { key: 'Ctrl+R', desc: ce.r.text, action: 'ctrl_r' },
       ]},
       { name: ti.groups.other, items: [
         { key: 'Tab',    desc: ti.extra.tab, action: 'tab' },
@@ -228,8 +237,22 @@ function getPrompt() {
   return `<span class="prompt-user">user@macbook</span>:<span class="prompt-path">${p}</span><span class="prompt-symbol">$ </span>`;
 }
 
+function rsFindMatch(from) {
+  for (let i = from; i >= 0; i--) {
+    if (rsBuf === '' || cmdHistory[i].includes(rsBuf)) { rsMatchIdx = i; return; }
+  }
+  rsMatchIdx = -1;
+}
+
 function renderTerminal() {
   if (mode !== 'normal') return;
+  if (rsMode) {
+    const match = rsMatchIdx >= 0 ? escHtml(cmdHistory[rsMatchIdx]) : '';
+    termEl.innerHTML = termLines.join('') +
+      `<div class="prompt-line"><span style="color:#888">(reverse-i-search)\`${escHtml(rsBuf)}':</span> <span class="output-line">${match}<span class="cursor-block"> </span></span></div>`;
+    termEl.scrollTop = termEl.scrollHeight;
+    return;
+  }
   const before = escHtml(inputBuf.substring(0, cursorPos));
   const ch     = cursorPos < inputBuf.length ? escHtml(inputBuf[cursorPos]) : ' ';
   const after  = escHtml(inputBuf.substring(cursorPos + 1));
@@ -364,6 +387,7 @@ function execCmd(raw) {
       case 'vi': case 'vim': doVi(args); break;
       case 'whoami': addOutLine('user'); break;
       case 'date':  addOutLine(new Date().toLocaleString('zh-TW')); break;
+      case 'which': doWhich(args); break;
       case 'help':  doHelp(); break;
       default: addOutLine(`zsh: command not found: ${c}`, 'error-line'); isError = true;
     }
@@ -377,10 +401,30 @@ function execCmd(raw) {
 }
 
 // ── Commands ───────────────────────────
+const WHICH_PATHS = {
+  ls: '/bin/ls', pwd: '/bin/pwd', cat: '/bin/cat', echo: '/bin/echo', mkdir: '/bin/mkdir',
+  rm: '/bin/rm', cp: '/bin/cp', mv: '/bin/mv', date: '/bin/date', clear: '/usr/bin/clear',
+  head: '/usr/bin/head', tail: '/usr/bin/tail', wc: '/usr/bin/wc', grep: '/usr/bin/grep',
+  find: '/usr/bin/find', touch: '/usr/bin/touch', whoami: '/usr/bin/whoami',
+  vi: '/usr/bin/vi', vim: '/usr/bin/vim', which: '/usr/bin/which',
+};
+function doWhich(args) {
+  if (!args.length) { addOutLine('usage: which <command>', 'error-line'); return; }
+  args.forEach(cmd => {
+    if (WHICH_PATHS[cmd]) addOutLine(WHICH_PATHS[cmd]);
+    else addOutLine(`which: ${cmd}: not found`, 'error-line');
+  });
+}
+function fmtSize(bytes, human) {
+  if (!human) return String(bytes).padStart(6);
+  if (bytes < 1024) return `${bytes}B`.padStart(5);
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}K`.padStart(5);
+  return `${(bytes / (1024 * 1024)).toFixed(1)}M`.padStart(5);
+}
 function doLs(args) {
-  let showAll = false, showLong = false, target = null;
+  let showAll = false, showLong = false, human = false, target = null;
   for (const a of args) {
-    if (a.startsWith('-')) { if (a.includes('a')) showAll = true; if (a.includes('l')) showLong = true; }
+    if (a.startsWith('-')) { if (a.includes('a')) showAll = true; if (a.includes('l')) showLong = true; if (a.includes('h')) human = true; }
     else target = a;
   }
   const p = resolvePath(target), node = FS[p];
@@ -393,9 +437,9 @@ function doLs(args) {
       const n    = FS[full];
       const isDir = n && n.type === 'dir';
       const perm  = isDir ? 'drwxr-xr-x' : (n && n.executable ? '-rwxr-xr-x' : '-rw-r--r--');
-      const size  = n && n.content ? n.content.length : 4096;
+      const bytes = n && n.content ? n.content.length : 4096;
       const cls   = isDir ? 'dir-color' : (n && n.executable ? 'exec-color' : 'file-color');
-      addHtmlLine(`<span class="output-line">${perm}  1 user  staff  ${String(size).padStart(5)}  Mar 21 10:00  </span><span class="${cls}">${escHtml(name)}</span>`);
+      addHtmlLine(`<span class="output-line">${perm}  1 user  staff  ${fmtSize(bytes, human)}  Mar 21 10:00  </span><span class="${cls}">${escHtml(name)}</span>`);
     });
   } else {
     addHtmlLine(items.map(name => {
@@ -688,7 +732,7 @@ function showHint(type, title, text) {
 
 // ── Keyboard input ─────────────────────
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'F5' && e.key !== 'F12' && !(e.ctrlKey && e.key === 'r')) e.preventDefault();
+  if (e.key !== 'F5' && e.key !== 'F12') e.preventDefault();
   pressKeyVisual(findKeyId(e));
 
   if (e.key === 'Shift')   { shiftHeld = true; return; }
@@ -697,6 +741,27 @@ document.addEventListener('keydown', (e) => {
 
   if (mode.startsWith('vi')) { viHandleKey(e.key); return; }
 
+  // Reverse search mode
+  if (rsMode) {
+    if (e.key === 'Escape' || (e.ctrlKey && (e.key.toLowerCase() === 'g'))) {
+      rsMode = false; inputBuf = rsSaved; cursorPos = inputBuf.length;
+    } else if (e.key === 'Enter') {
+      rsMode = false;
+      const cmd = rsMatchIdx >= 0 ? cmdHistory[rsMatchIdx] : rsBuf;
+      inputBuf = ''; cursorPos = 0;
+      execCmd(cmd);
+    } else if (e.key === 'Backspace') {
+      rsBuf = rsBuf.slice(0, -1); rsFindMatch(cmdHistory.length - 1);
+    } else if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+      if (rsMatchIdx > 0) rsFindMatch(rsMatchIdx - 1); else rsMatchIdx = -1;
+    } else if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+      rsMode = false; inputBuf = ''; cursorPos = 0; addPromptLine('^C');
+    } else if (!e.ctrlKey && e.key.length === 1) {
+      rsBuf += e.key; rsFindMatch(cmdHistory.length - 1);
+    }
+    refresh(); return;
+  }
+
   if (e.ctrlKey || ctrlHeld) {
     const k = e.key.toLowerCase();
     switch (k) {
@@ -704,16 +769,22 @@ document.addEventListener('keydown', (e) => {
       case 'e': cursorPos = inputBuf.length; break;
       case 'b': cursorPos = Math.max(0, cursorPos - 1); break;
       case 'f': cursorPos = Math.min(inputBuf.length, cursorPos + 1); break;
-      case 'u': inputBuf = inputBuf.substring(cursorPos); cursorPos = 0; break;
-      case 'k': inputBuf = inputBuf.substring(0, cursorPos); break;
+      case 'u': killBuf = inputBuf.substring(0, cursorPos); inputBuf = inputBuf.substring(cursorPos); cursorPos = 0; break;
+      case 'k': killBuf = inputBuf.substring(cursorPos); inputBuf = inputBuf.substring(0, cursorPos); break;
       case 'w': {
         let i = cursorPos - 1;
         while (i >= 0 && inputBuf[i] === ' ') i--;
         while (i >= 0 && inputBuf[i] !== ' ') i--;
+        killBuf = inputBuf.substring(i + 1, cursorPos);
         inputBuf = inputBuf.substring(0, i + 1) + inputBuf.substring(cursorPos);
         cursorPos = i + 1;
         break;
       }
+      case 'y': inputBuf = inputBuf.substring(0, cursorPos) + killBuf + inputBuf.substring(cursorPos); cursorPos += killBuf.length; break;
+      case 'r':
+        rsMode = true; rsBuf = ''; rsSaved = inputBuf;
+        rsMatchIdx = cmdHistory.length - 1; rsFindMatch(rsMatchIdx);
+        break;
       case 'c': inputBuf = ''; cursorPos = 0; addPromptLine('^C'); break;
       case 'l': termLines = []; break;
     }

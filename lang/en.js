@@ -107,6 +107,12 @@ const LANG_EN = {
     c: { title: 'Ctrl+C', text: 'Interrupt / cancel current input and return to a new prompt.' },
     l: { title: 'Ctrl+L', text: 'Clear the screen, same as the clear command.' },
   },
+  smartHints: {
+    arrowLeft:  { title: '💡 Ctrl+A / Ctrl+B', text: 'Ctrl+A jumps to start of line, Ctrl+B moves left one char — faster than holding ←!' },
+    arrowRight: { title: '💡 Ctrl+E / Ctrl+F', text: 'Ctrl+E jumps to end of line, Ctrl+F moves right one char — faster than holding →!' },
+    backspace:  { title: '💡 Ctrl+W / Ctrl+U', text: 'Ctrl+W deletes previous word, Ctrl+U clears to start of line — faster than holding ⌫!' },
+    arrowUp:    { title: '💡 Ctrl+R', text: 'Type a keyword to search history instantly — no need to keep pressing ↑!' },
+  },
   tips: {
     terminalTitle: 'Terminal Shortcuts',
     viNormalTitle: 'Vim · Normal Mode',

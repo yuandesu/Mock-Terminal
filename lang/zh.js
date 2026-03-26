@@ -107,6 +107,12 @@ const LANG_ZH = {
     c: { title: 'Ctrl+C', text: '中斷/取消當前輸入，回到新的命令提示符。' },
     l: { title: 'Ctrl+L', text: '清除螢幕，效果同 clear 指令。' },
   },
+  smartHints: {
+    arrowLeft:  { title: '💡 Ctrl+A / Ctrl+B', text: 'Ctrl+A 直接跳到行首，Ctrl+B 單格左移（比一直按 ← 快！）' },
+    arrowRight: { title: '💡 Ctrl+E / Ctrl+F', text: 'Ctrl+E 直接跳到行尾，Ctrl+F 單格右移（比一直按 → 快！）' },
+    backspace:  { title: '💡 Ctrl+W / Ctrl+U', text: 'Ctrl+W 刪除前一個字，Ctrl+U 清除到行首（比一直按 ⌫ 快！）' },
+    arrowUp:    { title: '💡 Ctrl+R', text: '輸入關鍵字即時搜尋歷史指令，不用一直按 ↑ 翻！' },
+  },
   tips: {
     terminalTitle: '終端機快捷鍵',
     viNormalTitle: 'Vim · Normal 模式',

@@ -49,6 +49,7 @@
 }
 .light-mode .hint-toast.info    { background: #fff4e0; border-color: #cc8800; color: #885500; }
 .light-mode .hint-toast.explain { background: #f5eeff; border-color: #9055c8; color: #5a2d8a; }
+.light-mode .hint-toast.smart   { background: #fffbe0; border-color: #cc9900; color: #664400; }
 .light-mode .hint-toast.success { color: #266026; }
 .light-mode .error-line         { color: #cc2200; }
 .light-mode .dir-color          { color: #0055bb; }
@@ -111,6 +112,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); font-family:
 .hint-toast.success { background: var(--success-bg); border: 1px solid var(--success-border); color: #6f6; }
 .hint-toast.info    { background: #3a2a1a; border: 1px solid #8a6a2a; color: #ffd080; }
 .hint-toast.explain { background: #2a1a3a; border: 1px solid #6a4a8a; color: #d0b0ff; }
+.hint-toast.smart   { background: #2a2200; border: 1px solid #aa8800; color: #ffe066; }
 @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .hint-toast .hint-title { font-weight: 700; margin-bottom: 2px; font-size: 13px; }
 

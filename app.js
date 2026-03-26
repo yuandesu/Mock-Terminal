@@ -15,6 +15,8 @@ let ctrlHeld   = false;
 let shiftHeld  = false;
 let killBuf    = '';
 let rsMode     = false;
+let consecutiveKey  = { key: null, count: 0 };
+let shownSmartHints = new Set();
 let rsBuf      = '';
 let rsMatchIdx = -1;
 let rsSaved    = '';
@@ -730,6 +732,29 @@ function showHint(type, title, text) {
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 6000);
 }
 
+// ── Smart Hints ────────────────────────
+const SMART_HINT_THRESHOLDS = {
+  ArrowLeft:  { threshold: 3, hintKey: 'arrowLeft' },
+  ArrowRight: { threshold: 3, hintKey: 'arrowRight' },
+  Backspace:  { threshold: 4, hintKey: 'backspace' },
+  ArrowUp:    { threshold: 5, hintKey: 'arrowUp' },
+};
+
+function checkSmartHint(key) {
+  if (consecutiveKey.key === key) {
+    consecutiveKey.count++;
+  } else {
+    consecutiveKey = { key, count: 1 };
+  }
+  const cfg = SMART_HINT_THRESHOLDS[key];
+  if (!cfg) return;
+  if (consecutiveKey.count === cfg.threshold && !shownSmartHints.has(cfg.hintKey)) {
+    shownSmartHints.add(cfg.hintKey);
+    const h = T().smartHints[cfg.hintKey];
+    showHint('smart', h.title, h.text);
+  }
+}
+
 // ── Keyboard input ─────────────────────
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'F5' && e.key !== 'F12') e.preventDefault();
@@ -793,13 +818,13 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'Enter')       { execCmd(inputBuf); inputBuf = ''; cursorPos = 0; }
-  else if (e.key === 'Backspace') { if (cursorPos > 0) { inputBuf = inputBuf.substring(0, cursorPos - 1) + inputBuf.substring(cursorPos); cursorPos--; } }
+  else if (e.key === 'Backspace') { checkSmartHint('Backspace'); if (cursorPos > 0) { inputBuf = inputBuf.substring(0, cursorPos - 1) + inputBuf.substring(cursorPos); cursorPos--; } }
   else if (e.key === 'Delete')    { if (cursorPos < inputBuf.length) inputBuf = inputBuf.substring(0, cursorPos) + inputBuf.substring(cursorPos + 1); }
-  else if (e.key === 'ArrowLeft')  { cursorPos = Math.max(0, cursorPos - 1); }
-  else if (e.key === 'ArrowRight') { cursorPos = Math.min(inputBuf.length, cursorPos + 1); }
+  else if (e.key === 'ArrowLeft')  { checkSmartHint('ArrowLeft');  cursorPos = Math.max(0, cursorPos - 1); }
+  else if (e.key === 'ArrowRight') { checkSmartHint('ArrowRight'); cursorPos = Math.min(inputBuf.length, cursorPos + 1); }
   else if (e.key === 'Home')  { cursorPos = 0; }
   else if (e.key === 'End')   { cursorPos = inputBuf.length; }
-  else if (e.key === 'ArrowUp')   { if (cmdHistory.length > 0) { histIdx = Math.max(0, histIdx - 1); inputBuf = cmdHistory[histIdx] || ''; cursorPos = inputBuf.length; } }
+  else if (e.key === 'ArrowUp')   { checkSmartHint('ArrowUp'); if (cmdHistory.length > 0) { histIdx = Math.max(0, histIdx - 1); inputBuf = cmdHistory[histIdx] || ''; cursorPos = inputBuf.length; } }
   else if (e.key === 'ArrowDown') { if (histIdx < cmdHistory.length - 1) { histIdx++; inputBuf = cmdHistory[histIdx]; } else { histIdx = cmdHistory.length; inputBuf = ''; } cursorPos = inputBuf.length; }
   else if (e.key === 'Tab')       { doTabComplete(); }
   else if (e.key.length === 1)    { inputBuf = inputBuf.substring(0, cursorPos) + e.key + inputBuf.substring(cursorPos); cursorPos++; }

@@ -107,6 +107,12 @@ const LANG_JA = {
     c: { title: 'Ctrl+C', text: '入力を中断してプロンプトに戻る。' },
     l: { title: 'Ctrl+L', text: '画面をクリア。clear コマンドと同じ効果。' },
   },
+  smartHints: {
+    arrowLeft:  { title: '💡 Ctrl+A / Ctrl+B', text: 'Ctrl+A で行頭へジャンプ、Ctrl+B で1文字左移動 — ← を連打するより速い！' },
+    arrowRight: { title: '💡 Ctrl+E / Ctrl+F', text: 'Ctrl+E で行末へジャンプ、Ctrl+F で1文字右移動 — → を連打するより速い！' },
+    backspace:  { title: '💡 Ctrl+W / Ctrl+U', text: 'Ctrl+W で前の単語を削除、Ctrl+U で行頭まで削除 — ⌫ を連打するより速い！' },
+    arrowUp:    { title: '💡 Ctrl+R', text: 'キーワードを入力して履歴を即検索 — ↑ を連打しなくて済む！' },
+  },
   tips: {
     terminalTitle: 'ターミナルショートカット',
     viNormalTitle: 'Vim · ノーマルモード',

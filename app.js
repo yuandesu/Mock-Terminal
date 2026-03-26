@@ -16,7 +16,6 @@ let shiftHeld  = false;
 let killBuf    = '';
 let rsMode     = false;
 let consecutiveKey  = { key: null, count: 0 };
-let shownSmartHints = new Set();
 let rsBuf      = '';
 let rsMatchIdx = -1;
 let rsSaved    = '';
@@ -748,8 +747,7 @@ function checkSmartHint(key) {
   }
   const cfg = SMART_HINT_THRESHOLDS[key];
   if (!cfg) return;
-  if (consecutiveKey.count === cfg.threshold && !shownSmartHints.has(cfg.hintKey)) {
-    shownSmartHints.add(cfg.hintKey);
+  if (consecutiveKey.count === cfg.threshold) {
     const h = T().smartHints[cfg.hintKey];
     showHint('smart', h.title, h.text);
   }

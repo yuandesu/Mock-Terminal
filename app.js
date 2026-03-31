@@ -501,6 +501,13 @@ function execCmdCore(cmd, stdin) {
   return isError;
 }
 
+function runSilent(cmd) {
+  const prev = captureBuf;
+  captureBuf = [];
+  execCmdCore(cmd.trim(), null);
+  captureBuf = prev;
+}
+
 function execCmd(raw) {
   const cmd = raw.trim();
   if (!cmd) { addPromptLine(''); refresh(); return; }
@@ -519,6 +526,7 @@ function execCmd(raw) {
     }
   }
   if (taskMode) checkTaskCompletion(cmd);
+  if (typeof LevelRunner !== 'undefined' && LevelRunner.active) LevelRunner.afterCommand();
   saveProgress();
   refresh();
 }
@@ -1066,6 +1074,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Alt' || e.key === 'Meta') return;
 
   if (typeof ChallengeEngine !== 'undefined' && ChallengeEngine.active) { ChallengeEngine.handleKey(e.key); return; }
+  if (typeof LevelRunner !== 'undefined' && LevelRunner.active && LevelRunner.levelType === 'cursor') { LevelRunner.handleKey(e); return; }
   if (mode.startsWith('vi')) { viHandleKey(e.key); return; }
 
   // Reverse search mode
@@ -1214,6 +1223,7 @@ function simulateKey(kid) {
 // ── Init ───────────────────────────────
 loadProgress();
 buildKeyboard();
+if (typeof LevelRunner !== 'undefined') LevelRunner.init();
 if (typeof ChallengeEngine !== 'undefined') {
   ChallengeEngine.init();
   if (window.location.hash.startsWith('#c=')) {

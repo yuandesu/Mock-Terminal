@@ -21,8 +21,7 @@
         <div class="lang-btn active" data-lang="zh" onclick="switchLang('zh')">中</div>
         <div class="lang-btn"        data-lang="en" onclick="switchLang('en')">EN</div>
         <div class="lang-btn"        data-lang="ja" onclick="switchLang('ja')">日</div>
-        <div class="task-mode-btn" id="taskModeBtn" onclick="toggleTaskMode()">Tasks</div>
-        <div class="task-mode-btn" id="challengeBtn" onclick="ChallengeEngine.showMenu()">Challenge</div>
+        <div class="task-mode-btn" id="levelsBtn" onclick="LevelRunner.showMap()">Levels</div>
         <div class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</div>
         <div class="mode-badge" id="modeBadge">NORMAL</div>
       </div>
@@ -39,6 +38,7 @@
       <div class="task-bar-body" id="taskBarBody" style="display:none"></div>
     </div>
     <div id="challenge-hud" style="display:none"></div>
+    <div id="level-hud" style="display:none"></div>
     <div class="terminal-wrap">
       <div id="terminal"></div>
       <div class="hint-container" id="hintContainer"></div>
@@ -66,6 +66,8 @@
   <script src="task-themes.js"></script>
   <script src="challenge-scenarios.js"></script>
   <script src="challenge.js"></script>
+  <script src="levels-data.js"></script>
+  <script src="level-runner.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

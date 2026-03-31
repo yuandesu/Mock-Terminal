@@ -1065,6 +1065,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Control') { ctrlHeld = true; updateModifierVisual(); return; }
   if (e.key === 'Alt' || e.key === 'Meta') return;
 
+  if (typeof ChallengeEngine !== 'undefined' && ChallengeEngine.active) { ChallengeEngine.handleKey(e.key); return; }
   if (mode.startsWith('vi')) { viHandleKey(e.key); return; }
 
   // Reverse search mode
@@ -1213,6 +1214,12 @@ function simulateKey(kid) {
 // ── Init ───────────────────────────────
 loadProgress();
 buildKeyboard();
+if (typeof ChallengeEngine !== 'undefined') {
+  ChallengeEngine.init();
+  if (window.location.hash.startsWith('#c=')) {
+    ChallengeEngine.deserialize(window.location.hash.slice(3));
+  }
+}
 addHtmlLine(`<span class="output-line" style="color:#888">${T().welcome1}</span>`);
 addHtmlLine(`<span class="output-line" style="color:#888">${T().welcome2}</span>`);
 addHtmlLine(`<span class="output-line" style="color:#888">${T().separator}</span>`);
